@@ -137,6 +137,21 @@ class FMDPIF(abc.ABC):
 
         pass
 
+    @property
+    @abc.abstractmethod
+    def history(self):
+        """
+        Returns the history of the FMDP's states, actions and rewards.
+
+        Returns:
+            list - a list of tuples. Each tuple has three elements. The first
+                element is the state, the second element is the action and the
+                third element is the reward. The tuples are in order of the
+                time they were encountered from earliest to latest.
+        """
+
+        pass
+
 
 class TicTacToeState(StateIF):
     """
@@ -154,8 +169,44 @@ class TicTacToeState(StateIF):
         """
 
         self._board = board
+        self._nrows = 3
+        self._ncols = 3
 
         return
+
+    @property
+    def id(self):
+        pass
+
+    def __eq__(self, other):
+        pass
+
+    def __str__(self):
+        for row in range(self._nrows):
+            print(" " + str(row), end="")
+        print()
+
+        for row in range(self._nrows):
+            print(row, end="")
+            for col in range(self._ncols):
+                if self._board[row][col] == 0:
+                    print(" ", end="")
+                elif self._board[row][col] == 1:
+                    print("X", end="")
+                else:
+                    print("O", end="")
+                if col != self._ncols - 1:
+                    print("|", end="")
+                else:
+                    print()
+            if row != self._nrows - 1:
+                print(" -----")
+        print() 
+
+        return
+
+    def actions(self):
+        pass
 
 
 class TicTacToeGame(FMDPIF):
@@ -163,6 +214,29 @@ class TicTacToeGame(FMDPIF):
     This class implements the game tic tac toe as a FMDP.
     """
 
-    def __init__
+    def __init__(self):
+        """
+        Initializes the a new tic tac toe game.
+        """
 
+        self._state = TicTacToeState([[0] * 3] * 3)
+
+        return
+
+    @property
+    def state(self):
+        pass
+
+    def set_state(self, state):
+        pass
+
+    def actions(self, state=None):
+        pass
+    
+    def reset(self):
+        pass
+
+    @property
+    def history(self):
+        pass
 
