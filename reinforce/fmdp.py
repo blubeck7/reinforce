@@ -1,7 +1,7 @@
 """
 Finite Markov Decision Process (FMDP) Module.
 
-This module contains the most basic functionality for a finite Markov decision
+This module contains the basic functionality of a finite Markov decision
 process. The basic components are a set of states, a set of actions and a set
 of rewards. A FMDP process starts in an initial state, usually the same state
 each time. An agent chooses an action, and the environment responds with a new
@@ -35,7 +35,7 @@ class StateIF(abc.ABC):
 
     @property
     @abc.abstractmethod
-    def id(self):
+    def uid(self):
         """
         Returns a state's unique id.
         """
@@ -54,17 +54,23 @@ class StateIF(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def __str__(self):
+    def display(self):
         """
-        Returns a printable string representing the state.
+        Displays the state as printable string.
         """
 
         pass
 
     @abc.abstractmethod
-    def actions(self):
+    def actions(self, *args, **kwargs):
         """
         Returns a list of the possible actions. 
+
+        Params:
+            args: tuple - optional positional arguments that depend on the
+                specifc FMDP.
+            kwargs: dict - optional keyword arguments that depend on the
+                specifc FMDP.
 
         Returns:
             list - a list of the possible actions.
@@ -79,7 +85,13 @@ class ActionIF(abc.ABC):
     Declares the methods that an action object implements.
     """
 
-    pass
+    @property
+    def agent(self):
+        """
+        Returns the agent that choose the action.
+        """
+
+        pass
 
 
 class FMDPIF(abc.ABC):
@@ -103,25 +115,46 @@ class FMDPIF(abc.ABC):
 
         Params:
             state: StateIF - a state object
-
-        Returns:
-            
         """
 
         pass
 
     @abc.abstractmethod
-    def actions(self, state=None):
+    def actions(self, state=None, *args, **kwargs):
         """
         Returns a list of the possible actions for a given state. 
 
         Params:
             state: StateIF - a state object. If None, then a list of the
                 actions for the current state is returned.
+            args: tuple - optional positional arguments that depend on the
+                specifc FMDP.
+            kwargs: dict - optional keyword arguments that depend on the
+                specifc FMDP.
 
         Returns:
-            list - a list of the possible actions.
+            list[ActionIF] - a list of the possible actions.
             
+        """
+
+        pass
+
+    @abc.abstractmethod
+    def do_action(self, action):
+        """
+        Updates the FMDP with the given action.
+
+        Params:
+            action: ActionIF - the action to do.
+        """
+
+        pass
+
+    @abc.abstractmethod
+    def do_env(self):
+        """
+        Simulates the environment one step based the current state, choosen
+        action and environment dynamics.
         """
 
         pass
@@ -151,92 +184,3 @@ class FMDPIF(abc.ABC):
         """
 
         pass
-
-
-class TicTacToeState(StateIF):
-    """
-    This class implements a state in the game tic tac toe.
-
-    A state in the game tic tac toe is a legal board position.
-    """
-
-    def __init__(self, board):
-        """
-        Initializes a tic tac toe state.
-
-        Params:
-            board: list - a 3x3 array of -1, 0, 1.  
-        """
-
-        self._board = board
-        self._nrows = 3
-        self._ncols = 3
-
-        return
-
-    @property
-    def id(self):
-        pass
-
-    def __eq__(self, other):
-        pass
-
-    def __str__(self):
-        for row in range(self._nrows):
-            print(" " + str(row), end="")
-        print()
-
-        for row in range(self._nrows):
-            print(row, end="")
-            for col in range(self._ncols):
-                if self._board[row][col] == 0:
-                    print(" ", end="")
-                elif self._board[row][col] == 1:
-                    print("X", end="")
-                else:
-                    print("O", end="")
-                if col != self._ncols - 1:
-                    print("|", end="")
-                else:
-                    print()
-            if row != self._nrows - 1:
-                print(" -----")
-        print() 
-
-        return
-
-    def actions(self):
-        pass
-
-
-class TicTacToeGame(FMDPIF):
-    """
-    This class implements the game tic tac toe as a FMDP.
-    """
-
-    def __init__(self):
-        """
-        Initializes the a new tic tac toe game.
-        """
-
-        self._state = TicTacToeState([[0] * 3] * 3)
-
-        return
-
-    @property
-    def state(self):
-        pass
-
-    def set_state(self, state):
-        pass
-
-    def actions(self, state=None):
-        pass
-    
-    def reset(self):
-        pass
-
-    @property
-    def history(self):
-        pass
-
