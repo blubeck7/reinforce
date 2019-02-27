@@ -83,17 +83,13 @@ class FMDPIF(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def actions(self, state=None, *args, **kwargs):
+    def get_actions(self, state=None):
         """
         Returns a list of the possible actions for a given state. 
 
         Params:
             state: StateIF - a state object. If None, then a list of the
                 actions for the current state is returned.
-            args: tuple - optional positional arguments that depend on the
-                specifc FMDP.
-            kwargs: dict - optional keyword arguments that depend on the
-                specifc FMDP.
 
         Returns:
             list[ActionIF] - a list of the possible actions.
@@ -102,30 +98,30 @@ class FMDPIF(abc.ABC):
 
         pass
 
+#    @abc.abstractmethod
+#    def do_action(self, action):
+#        """
+#        Updates the FMDP with the given action.
+#
+#        Params:
+#            action: ActionIF - the action to do.
+#        """
+#
+#        pass
+#
+#    @abc.abstractmethod
+#    def do_env(self):
+#        """
+#        Simulates the environment one step based the current state, choosen
+#        action and environment dynamics.
+#        """
+#
+#        pass
+#
     @abc.abstractmethod
-    def do_action(self, action):
+    def step(self):
         """
-        Updates the FMDP with the given action.
-
-        Params:
-            action: ActionIF - the action to do.
-        """
-
-        pass
-
-    @abc.abstractmethod
-    def do_env(self):
-        """
-        Simulates the environment one step based the current state, choosen
-        action and environment dynamics.
-        """
-
-        pass
-
-    @abc.abstractmethod
-    def do_step(self):
-        """
-        Performs a single step
+        Performs a single step of the FMDP.
         """
 
         pass
@@ -165,6 +161,14 @@ class FMDPIF(abc.ABC):
         pass
 
 
+#class TurnGame(FMDP):
+    #"""
+    #Defines base class for turn based games
+    #"""
+#
+    #pass
+
+
 class StateIF(abc.ABC):
     """
     Wrapper class for a state object.
@@ -197,25 +201,15 @@ class StateIF(abc.ABC):
     @abc.abstractmethod
     def display(self):
         """
-        Displays the state as printable string.
+        Displays the state as a printable string.
         """
 
         pass
 
     @abc.abstractmethod
-    def actions(self, *args, **kwargs):
+    def is_null(self):
         """
-        Returns a list of the possible actions. 
-
-        Params:
-            args: tuple - optional positional arguments that depend on the
-                specifc FMDP.
-            kwargs: dict - optional keyword arguments that depend on the
-                specifc FMDP.
-
-        Returns:
-            list - a list of the possible actions.
-            
+        Returns true if the null state.
         """
 
         pass
@@ -227,9 +221,18 @@ class ActionIF(abc.ABC):
     """
 
     @property
-    def agent(self):
+    @abc.abstractmethod
+    def agent_key(self):
         """
-        Returns the agent that choose the action.
+        Returns the key of the agent who chose the action.
+        """
+
+        pass
+
+    @abc.abstractmethod
+    def display(self):
+        """
+        Displays the action as a printable string.
         """
 
         pass
@@ -252,20 +255,16 @@ class NullState(StateIF):
         """
 
         self._agent_key = agent_key
-        self._is_null = True
 
     @property
     def agent_key(self):
         return self._agent_key
 
-    @abc.abstractmethod
     def __eq__(self, other):
         pass
 
-    @abc.abstractmethod
     def display(self):
         pass
 
-    @abc.abstractmethod
-    def actions(self, *args, **kwargs):
-        return []
+    def is_null(self):
+        return True

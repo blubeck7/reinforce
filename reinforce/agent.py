@@ -34,33 +34,17 @@ class PolicyIF(abc.ABC):
     over the possible actions from that state.
     """
 
-    @property
     @abc.abstractmethod
-    def fmdp(self):
+    def get_action(self, state, fmdp):
         """
-        Returns the FMDP that the policy is for.
-        """
-
-        pass
-
-    @abc.abstractmethod
-    def set_fmdp(self, fmdp):
-        """
-        Sets the FMDP that the policy is for.
+        Selects an available action from the current state.
 
         Params:
-            fmdp: FMDPIF - the FMDP to use.
-        """
-        
-        pass
-
-    @abc.abstractmethod
-    def choose_action(self):
-        """
-        Chooses an available action from the current state.
+            state: StateIF - the current state object.
+            fmdp: FMDPIF - a FMDP that the current state comes from.
 
         Returns:
-            ActionIF - the choosen action.
+            ActionIF - the selected action.
         """
 
         pass
@@ -124,12 +108,15 @@ class AgentIF(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def choose_action(self, state):
+    def get_action(self, state):
         """
-        Chooses an action from the given state based on the agent's policy.
+        Selects an action from the given state based on the agent's policy.
 
         Params:
             state: StateIF - the state from which to choose an action.
+
+        Returns:
+            ActionIF - the agent's selected action.
         """
 
         pass
@@ -148,19 +135,10 @@ class RandomPolicy(PolicyIF):
         Initializes the random policy.
         """
 
-        self._fmdp = None
-
         return
 
-    @property
-    def fmdp(self):
-        return self._fmdp
-
-    def set_fmdp(self, fmdp):
-        self._fmdp = fmdp
-
-    def choose_action(self):
-        actions = self._fmdp.actions()
+    def get_action(self, state, fmdp):
+        actions = fmdp.get_actions(state)
 
         return actions[random.randrange(len(actions))]
 
@@ -174,7 +152,7 @@ class Agent(AgentIF):
     the random policy and the optimal policy.
     """
 
-    def __init__(self, name, fmdp=None):
+    def __init__(self, name):
         """
         Initializes the agent.
 
@@ -183,7 +161,7 @@ class Agent(AgentIF):
         """
 
         self._name = name
-        self._fmdp = fmdp
+        self._fmdp = None
         self._policy = None
 
         return
@@ -205,3 +183,6 @@ class Agent(AgentIF):
 
     def set_policy(self, policy):
         self._policy = policy
+
+    def get_action(self, state):
+        return self._policy.get_action(state, self.fmdp)
