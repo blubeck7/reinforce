@@ -24,12 +24,14 @@ Exceptions:
 
 import abc
 import random
-import uuid
 
 
 class PolicyIF(abc.ABC):
     """
     Declares the methods that a policy object implements.
+
+    A policy is a function that assigns a state to a conditional probability
+    over the possible actions from that state.
     """
 
     @property
@@ -39,6 +41,17 @@ class PolicyIF(abc.ABC):
         Returns the FMDP that the policy is for.
         """
 
+        pass
+
+    @abc.abstractmethod
+    def set_fmdp(self, fmdp):
+        """
+        Sets the FMDP that the policy is for.
+
+        Params:
+            fmdp: FMDPIF - the FMDP to use.
+        """
+        
         pass
 
     @abc.abstractmethod
@@ -60,23 +73,6 @@ class AgentIF(abc.ABC):
 
     @property
     @abc.abstractmethod
-    def uid(self):
-        """
-        Returns the agent's unique id.
-        """
-
-        pass
-
-    @property
-    def fmdp(self):
-        """
-        Returns the FMDP that the agent is for.
-        """
-        
-        return self._fmdp
-
-    @property
-    @abc.abstractmethod
     def name(self):
         """
         Returns the agent's name.
@@ -87,15 +83,24 @@ class AgentIF(abc.ABC):
 
         pass
 
+    @property
     @abc.abstractmethod
-    def set_name(self, name):
+    def fmdp(self):
         """
-        Sets the agent's name.
+        Returns the FMDP that the agent is for.
+        """
+        
+        pass
+
+    @abc.abstractmethod
+    def set_fmdp(self, fmdp):
+        """
+        Sets the FMDP that the agent is for.
 
         Params:
-            name: str - the name to use.
+            fmdp: FMDPIF - the FMDP to use.
         """
-
+        
         pass
 
     @property
@@ -107,16 +112,27 @@ class AgentIF(abc.ABC):
 
         pass
 
-#    @abc.abstractmethod
-#    def set_policy(self, policy):
-#        """
-#        Sets the agent's policy.
-#
-#        Params:
-#            policy: PolicyIF - the policy to use.
-#        """
-#
-#        pass
+    @abc.abstractmethod
+    def set_policy(self, policy):
+        """
+        Sets the agent's policy.
+        
+        Params:
+            policy: PolicyIF - the policy to use.
+        """
+        
+        pass
+
+    @abc.abstractmethod
+    def choose_action(self, state):
+        """
+        Chooses an action from the given state based on the agent's policy.
+
+        Params:
+            state: StateIF - the state from which to choose an action.
+        """
+
+        pass
 
 
 class RandomPolicy(PolicyIF):
@@ -127,22 +143,21 @@ class RandomPolicy(PolicyIF):
     with equal probability.
     """
 
-    def __init__(self, fmdp):
+    def __init__(self):
         """
         Initializes the random policy.
-
-        Params:
-            fmdp: FMDPIF - the fmdp process to use.
         """
 
-        self._fmdp = fmdp
+        self._fmdp = None
 
         return
 
     @property
     def fmdp(self):
-        
         return self._fmdp
+
+    def set_fmdp(self, fmdp):
+        self._fmdp = fmdp
 
     def choose_action(self):
         actions = self._fmdp.actions()
@@ -150,50 +165,43 @@ class RandomPolicy(PolicyIF):
         return actions[random.randrange(len(actions))]
 
 
-class RandomAgent(AgentIF):
+class Agent(AgentIF):
     """
-    Defines a random agent.
+    Defines an agent.
 
-    A random agent is an agent that follows the random policy.
+    An agent is a thing capable of taking actions. It does so acccording to a
+    policy. Two important policies that are independent of the actual FMDP are
+    the random policy and the optimal policy.
     """
 
-    def __init__(self, name, fmdp):
+    def __init__(self, name, fmdp=None):
         """
-        Initializes a random agent.
+        Initializes the agent.
 
         Params:
             name: str - the name to use.
-            fmdp: FMDPIF - the FMDP that the random agent is for.
         """
 
-        self._uid = uuid.uuid1().int
-        self._fmdp = fmdp
         self._name = name
-        self._policy = RandomPolicy(fmdp)
+        self._fmdp = fmdp
+        self._policy = None
 
         return
-
-    @property
-    def uid(self):
-
-        return self._uid
-
-    @property
-    def fmdp(self):
-
-        return self._fmdp
 
     @property
     def name(self):
-
         return self._name
 
     @property
-    def policy(self):
+    def fmdp(self):
+        return self._fmdp
 
+    def set_fmdp(self, fmdp):
+        self._fmdp = fmdp
+
+    @property
+    def policy(self):
         return self._policy
 
-    def set_name(self, name):
-        self._name = name
-
-        return
+    def set_policy(self, policy):
+        self._policy = policy

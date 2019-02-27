@@ -28,16 +28,157 @@ Exceptions:
 import abc
 
 
-class StateIF(abc.ABC):
+class FMDPIF(abc.ABC):
     """
-    Declares the methods that a state object implements.
+    Declares the methods a finite Markov decision process (FMDP) implements.
     """
 
     @property
     @abc.abstractmethod
-    def uid(self):
+    def agents(self):
         """
-        Returns a state's unique id.
+        Returns a dictionary of the registered agents for the FMDP.
+        """
+
+        pass
+
+    @abc.abstractmethod
+    def set_agent(self, key, agent):
+        """
+        Sets an agent.  
+
+        Params:
+            key: hashable - the agent's key.
+            agent: AgentIF - an agent object
+        """
+
+        pass
+
+    @property
+    @abc.abstractmethod
+    def state(self):
+        """
+        Returns the current state of the FMDP.
+        """
+
+        pass
+
+    @abc.abstractmethod
+    def set_state(self, state):
+        """
+        Sets the current state of the FMDP. 
+
+        Params:
+            state: StateIF - a state object
+        """
+
+        pass
+
+    @abc.abstractmethod
+    def display(self):
+        """
+        Displays the FMDP as a printable string.
+        """
+
+        pass
+
+    @abc.abstractmethod
+    def actions(self, state=None, *args, **kwargs):
+        """
+        Returns a list of the possible actions for a given state. 
+
+        Params:
+            state: StateIF - a state object. If None, then a list of the
+                actions for the current state is returned.
+            args: tuple - optional positional arguments that depend on the
+                specifc FMDP.
+            kwargs: dict - optional keyword arguments that depend on the
+                specifc FMDP.
+
+        Returns:
+            list[ActionIF] - a list of the possible actions.
+            
+        """
+
+        pass
+
+    @abc.abstractmethod
+    def do_action(self, action):
+        """
+        Updates the FMDP with the given action.
+
+        Params:
+            action: ActionIF - the action to do.
+        """
+
+        pass
+
+    @abc.abstractmethod
+    def do_env(self):
+        """
+        Simulates the environment one step based the current state, choosen
+        action and environment dynamics.
+        """
+
+        pass
+
+    @abc.abstractmethod
+    def do_step(self):
+        """
+        Performs a single step
+        """
+
+        pass
+
+    @abc.abstractmethod
+    def run(self):
+        """
+        Runs the FMDP according to its specific environment and rules.
+        """
+
+        pass
+
+    @abc.abstractmethod
+    def reset(self):
+        """
+        Resets the FMDP.
+
+        This method resets the FMDP by returning it to its initial state and
+        clears the FMDP's history.
+        """
+
+        pass
+
+    @property
+    @abc.abstractmethod
+    def history(self):
+        """
+        Returns the history of the FMDP's states, actions and rewards.
+
+        Returns:
+            list - a list of tuples. Each tuple has three elements. The first
+                element is the state, the second element is the action and the
+                third element is the reward. The tuples are in order of the
+                time they were encountered from earliest to latest.
+        """
+
+        pass
+
+
+class StateIF(abc.ABC):
+    """
+    Wrapper class for a state object.
+
+    This class functions as a data structure that stores all the information
+    about a state. In addition, it declares a few basic methods that apply to
+    any state object independent of the actual FMDP.
+    """
+
+    @property
+    @abc.abstractmethod
+    def agent_key(self):
+        """
+        Returns the key of the agent whose turn it is.
         """
 
         pass
@@ -94,93 +235,37 @@ class ActionIF(abc.ABC):
         pass
 
 
-class FMDPIF(abc.ABC):
+class NullState(StateIF):
     """
-    Declares the methods a finite Markov decision process (FMDP) implements.
+    Null state object.
+
+    This class defines the null state, which is a state that always transitions
+    to itself and rewards zero.
     """
+
+    def __init__(self, agent_key):
+        """
+        Initializes the null state.
+
+        Params:
+            agent_key: hashable - the agent whose is in the null state.
+        """
+
+        self._agent_key = agent_key
+        self._is_null = True
 
     @property
-    @abc.abstractmethod
-    def state(self):
-        """
-        Returns the current state of the FMDP.
-        """
+    def agent_key(self):
+        return self._agent_key
 
+    @abc.abstractmethod
+    def __eq__(self, other):
         pass
 
     @abc.abstractmethod
-    def set_state(self, state):
-        """
-        Sets the current state of the FMDP. 
-
-        Params:
-            state: StateIF - a state object
-        """
-
+    def display(self):
         pass
 
     @abc.abstractmethod
-    def actions(self, state=None, *args, **kwargs):
-        """
-        Returns a list of the possible actions for a given state. 
-
-        Params:
-            state: StateIF - a state object. If None, then a list of the
-                actions for the current state is returned.
-            args: tuple - optional positional arguments that depend on the
-                specifc FMDP.
-            kwargs: dict - optional keyword arguments that depend on the
-                specifc FMDP.
-
-        Returns:
-            list[ActionIF] - a list of the possible actions.
-            
-        """
-
-        pass
-
-    @abc.abstractmethod
-    def do_action(self, action):
-        """
-        Updates the FMDP with the given action.
-
-        Params:
-            action: ActionIF - the action to do.
-        """
-
-        pass
-
-    @abc.abstractmethod
-    def do_env(self):
-        """
-        Simulates the environment one step based the current state, choosen
-        action and environment dynamics.
-        """
-
-        pass
-
-    @abc.abstractmethod
-    def reset(self):
-        """
-        Resets the FMDP.
-
-        This method resets the FMDP by returning it to its initial state and
-        clears the FMDP's history.
-        """
-
-        pass
-
-    @property
-    @abc.abstractmethod
-    def history(self):
-        """
-        Returns the history of the FMDP's states, actions and rewards.
-
-        Returns:
-            list - a list of tuples. Each tuple has three elements. The first
-                element is the state, the second element is the action and the
-                third element is the reward. The tuples are in order of the
-                time they were encountered from earliest to latest.
-        """
-
-        pass
+    def actions(self, *args, **kwargs):
+        return []

@@ -13,22 +13,24 @@ Exceptions:
 """
 
 
-import agent
-import tictactoe
+from reinforce import agent
+from reinforce import tictactoe
 
 
-def main():
-    fmdp = tictactoe.TicTacToeGame()
-    rand_agent = agent.RandomAgent("random", fmdp)
+# the base fmdp is the history of moves made and contains the true function
+# p(s', r|s, a) for the environment. Each agent has its own version of the fmdp
+# so that each agent can have its own estimate of the environment's dynamcis
+# and other agents' policies. 
 
-    fmdp.state.display()
-    actions = fmdp.actions()
-    print(actions)
-    action = agent1.choose_action()
-    print(action)
+base_fmdp = tictactoe.TicTacToeGame()
+agent1 = agent.Agent("Agent 1", tictactoe.TicTacToeGame())
+agent2 = agent.Agent("Agent 2", tictactoe.TicTacToeGame())
+base_fmdp.set_agent(tictactoe.XAGENT, agent1)
+base_fmdp.set_agent(tictactoe.OAGENT, agent2)
 
-    return
+base_fmdp.display()
+base_fmdp.do_turn()
+# agent1.choose_action(base_fmdp)
 
-
-if __name__ == "__main__":
-    main()
+# if __name__ == "__main__":
+    # main()
