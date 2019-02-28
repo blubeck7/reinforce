@@ -8,14 +8,17 @@ each time. An agent chooses an action, and the environment responds with a new
 state and a reward according to a conditional probability function
 p(S_t+1 = s', R_t+1 =r | S_t = s, A_t = a). This sequence of an action by the
 agent followed by a response from the environment can terminate after a finite
-number of times or continue indefinitely depending on the application.
-Different applications will provide different implementations of a FMDP. The
-environment's dynamics and an agent's policy are implemented as higher level
-classes that use the classes in this module.
+number of times or continue indefinitely depending on the application. In this
+library, a FMDP is implemented as a bundling of states, actions, rewards and an
+environment. The environment is everything that can not be arbitrarily changed
+by an agent. The purporse of the environment is to calculate rewards and state
+transitions based on the current state and a given action.
 
 Classes:
-    StateIF
     FMDPIF
+    EnvironmentIF
+    StateIF
+    ActionIF
 
 Functions:
 
@@ -32,27 +35,6 @@ class FMDPIF(abc.ABC):
     """
     Declares the methods a finite Markov decision process (FMDP) implements.
     """
-
-    @property
-    @abc.abstractmethod
-    def agents(self):
-        """
-        Returns a dictionary of the registered agents for the FMDP.
-        """
-
-        pass
-
-    @abc.abstractmethod
-    def set_agent(self, key, agent):
-        """
-        Sets an agent.  
-
-        Params:
-            key: hashable - the agent's key.
-            agent: AgentIF - an agent object
-        """
-
-        pass
 
     @property
     @abc.abstractmethod
@@ -75,9 +57,9 @@ class FMDPIF(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def display(self):
+    def is_terminal(self):
         """
-        Displays the FMDP as a printable string.
+        Returns True if the current state is the terminal state.
         """
 
         pass
@@ -94,6 +76,99 @@ class FMDPIF(abc.ABC):
         Returns:
             list[ActionIF] - a list of the possible actions.
             
+        """
+
+        pass
+
+    @abc.abstractmethod
+    def next(self, action):
+        """
+        Updates the FMDP.
+
+        This method transitions the FMDP to a new state and gives a reward
+        based on the environment's dynamics.
+
+        Params:
+            action: ActionIF - the chosen action.
+        """
+
+        pass
+
+    @property
+    @abc.abstractmethod
+    def env(self):
+        """
+        The FMDP's environment.
+
+        Returns:
+            EnvIF - the environemnt object.
+        """
+
+        oass
+
+    @abc.abstractmethod
+    def set_env(self, env):
+        """
+        Sets the environment.  
+
+        Params:
+            env: EnvIF - a environment object. 
+        """
+
+        pass
+
+    @property
+    @abc.abstractmethod
+    def history(self):
+        """
+        Returns the history of the FMDP's states, actions and rewards.
+
+        Returns:
+            list - a list of tuples. Each tuple has three elements. The first
+                element is the state, the second element is the action and the
+                third element is the reward. The tuples are in order of the
+                time they were encountered from earliest to latest.
+        """
+
+        pass
+
+    @abc.abstractmethod
+    def reset(self):
+        """
+        Resets the FMDP.
+
+        This method resets the FMDP by returning it to its initial state and
+        clears the FMDP's history.
+        """
+
+        pass
+
+    @abc.abstractmethod
+    def display(self):
+        """
+        Displays the FMDP as a printable string.
+        """
+
+        pass
+
+
+
+
+
+    # deprecated
+    @property
+    @abc.abstractmethod
+    def agents(self):
+        """
+        Returns a dictionary of the registered agents for the FMDP.
+        """
+
+        pass
+
+    @abc.abstractmethod
+    def run(self):
+        """
+        Runs the FMDP according to its specific environment and rules.
         """
 
         pass
@@ -126,47 +201,29 @@ class FMDPIF(abc.ABC):
 
         pass
 
-    @abc.abstractmethod
-    def run(self):
-        """
-        Runs the FMDP according to its specific environment and rules.
-        """
 
-        pass
+class EnvIF(abc.ABC):
+    """
+    Declares the methods that an environment object implements.
+    """
 
     @abc.abstractmethod
-    def reset(self):
+    def next(self, state, action):
         """
-        Resets the FMDP.
+        Returns the next state and a reward.
 
-        This method resets the FMDP by returning it to its initial state and
-        clears the FMDP's history.
-        """
+        This method takes a state and action and then according to its dynamics
+        p(s',r|s,a), the environment returns the next state and a reward.
 
-        pass
-
-    @property
-    @abc.abstractmethod
-    def history(self):
-        """
-        Returns the history of the FMDP's states, actions and rewards.
+        Params:
+            state: StateIF - the current state.
+            action: ActionIF - the chosen action.
 
         Returns:
-            list - a list of tuples. Each tuple has three elements. The first
-                element is the state, the second element is the action and the
-                third element is the reward. The tuples are in order of the
-                time they were encountered from earliest to latest.
+            StateIF, float - the next state and reward tuple.
         """
 
         pass
-
-
-#class TurnGame(FMDP):
-    #"""
-    #Defines base class for turn based games
-    #"""
-#
-    #pass
 
 
 class StateIF(abc.ABC):
@@ -207,9 +264,25 @@ class StateIF(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def is_null(self):
+    def is_terminal(self):
         """
-        Returns true if the null state.
+        Returns true if the terminal state.
+        """
+
+        pass
+
+    @abc.abstractmethod
+    def copy(self):
+        """
+        Returns a copy of itself.
+        """
+
+        pass
+
+    @abc.abstractmethod
+    def update(self, action):
+        """
+        Updates itself based on the action.
         """
 
         pass
@@ -237,21 +310,29 @@ class ActionIF(abc.ABC):
 
         pass
 
+    @abc.abstractmethod
+    def is_null(self):
+        """
+        Returns true if the null action.
+        """
 
-class NullState(StateIF):
+        pass
+
+
+class TerimnalState(StateIF):
     """
-    Null state object.
+    Terminal state object.
 
-    This class defines the null state, which is a state that always transitions
-    to itself and rewards zero.
+    This class defines the terminal state, which is a state that always
+    transitions to itself and rewards zero.
     """
 
     def __init__(self, agent_key):
         """
-        Initializes the null state.
+        Initializes the terminal state.
 
         Params:
-            agent_key: hashable - the agent whose is in the null state.
+            agent_key: int|str - the agent who is in the terminal state.
         """
 
         self._agent_key = agent_key
@@ -261,10 +342,61 @@ class NullState(StateIF):
         return self._agent_key
 
     def __eq__(self, other):
-        pass
+        if isinstance(other, type(self)) and (
+            self.is_terminal() == other.is_terminal()):
+            return True
+
+        return False
 
     def display(self):
-        pass
+        print("Terminal State")
+
+    def is_terminal(self):
+        return True
+
+    def copy(self):
+        return type(self)(self.agent_key)
+
+    def update(self, action):
+        return self
+
+
+class NullAction(ActionIF):
+    """
+    Defines the null action object.
+
+    The null action is the action that represents inability to take any normal
+    action. For example, it may not be the action's turn to act according to
+    the state and dynamics of the FMDP.
+    """
+
+    def __init__(self, agent_key):
+        """
+        Initializes the null action. 
+
+        Params:
+            agent_key: int|str - the key of the agent who chose the null
+                action.
+        """
+
+        self._agent_key = agent_key
+
+    @property
+    def agent_key(self):
+        return self._agent_key
+
+    def display(self):
+        print("null action")
 
     def is_null(self):
         return True
+
+
+#class TurnGame(FMDP):
+    #"""
+    #Defines base class for turn based games
+    #"""
+#
+    #pass
+
+

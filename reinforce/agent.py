@@ -121,6 +121,17 @@ class AgentIF(abc.ABC):
 
         pass
 
+    @abc.abstractmethod
+    def run(self):
+        """
+        Runs the agent.
+
+        This method starts the iterative sequence of the agent taking an action
+        followed by the environment responding with a new state and reward.
+        """
+
+        pass
+
 
 class RandomPolicy(PolicyIF):
     """
@@ -130,10 +141,16 @@ class RandomPolicy(PolicyIF):
     with equal probability.
     """
 
-    def __init__(self):
+    def __init__(self, seed=None):
         """
         Initializes the random policy.
+
+        Params:
+            seed: int - the seed to use for the random number generator.
         """
+
+        self._seed = seed
+        random.seed(seed) 
 
         return
 
@@ -141,6 +158,17 @@ class RandomPolicy(PolicyIF):
         actions = fmdp.get_actions(state)
 
         return actions[random.randrange(len(actions))]
+
+
+class OptimalPolicy(PolicyIF):
+    """
+    Defines the optimal policy.
+
+    The optimal policy is selecting at each state the action that maximizes the
+    expected value of the reward and the discounted value of the next state.
+    """
+
+    pass
 
 
 class Agent(AgentIF):
@@ -159,10 +187,16 @@ class Agent(AgentIF):
         Params:
             name: str - the name to use.
         """
+        # fmdp: FMDPIF - the fmdp configured with the true environment.
+        # policy: PolicyIF - the agent's policy.
+        # act_env - the true environment's dynamics.
+        # est_env - the agent's estimate of the environment's dynamics.
 
         self._name = name
         self._fmdp = None
         self._policy = None
+        self._act_env = None
+        self._est_env = None
 
         return
 
@@ -186,3 +220,8 @@ class Agent(AgentIF):
 
     def get_action(self, state):
         return self._policy.get_action(state, self.fmdp)
+
+    def run(self):
+        while not self.fmdp.is_terminal():
+            action = self.get_action(self.fmdp.state)
+            self.fmdp.next(action)

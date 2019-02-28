@@ -16,14 +16,21 @@ Exceptions:
 """
 
 
-#from reinforce import agent
 from reinforce import fmdp
 
 
-XAGENT = "x"
-OAGENT = "o"
+XAGENT = "X"
+XAGENTN = 1
+XAGENTW = 3
+OAGENT = "O"
+OAGENTN = -1
+OAGENTW = -3
+EMPTY = 0
 NROWS = 3
 NCOLS = 3
+WIN = 1
+TIE = 0
+LOSS = -1
 
 
 class TicTacToeGame(fmdp.FMDPIF):
@@ -38,23 +45,19 @@ class TicTacToeGame(fmdp.FMDPIF):
         # agents: dict - the agents or players for the game.
         # init_state: StateIF - the starting board for the game.
         # state: StateIF - the current board for the game.
-        # history: list - a list of tuples, where each tuple records the state,
-        #    action and reward for a given step.
+        # history: list - a list that records the sequence of state, action,
+        #    and reward tuples.
+        # step: int - the current step.
 
-        self._agents = {XAGENT: None, OAGENT: None} 
-        self._init_state = TicTacToeState(XAGENT, [[0] * 3] * 3)
+        #self._agents = {XAGENT: None, OAGENT: None} 
+        self._env = TicTacToeEnv()
+        self._init_state = TicTacToeState(
+            XAGENT, [[EMPTY]*3, [EMPTY]*3, [EMPTY]*3])
         self._state = self._init_state
         self._history = []
         self._step = 0
 
         return
-
-    @property
-    def agents(self):
-        return self._agents
-
-    def set_agent(self, key, agent):
-        self._agents[key] = agent
 
     @property
     def state(self):
@@ -63,10 +66,8 @@ class TicTacToeGame(fmdp.FMDPIF):
     def set_state(self, state):
         self._state = state
 
-    def display(self):
-        self._state.display()
-
-        return
+    def is_terminal(self):
+        return self.state.is_terminal()
 
     def get_actions(self, state=None):
         if state:
@@ -75,6 +76,8 @@ class TicTacToeGame(fmdp.FMDPIF):
         return self._get_actions(self._state)
 
     def _get_actions(self, state):
+        # TODO: Move this logic to TicTacToeEnv since that object is the object
+        # that knows the rules.
         actions = [] 
         for row in range(NROWS):
             for col in range(NCOLS):
@@ -83,6 +86,32 @@ class TicTacToeGame(fmdp.FMDPIF):
                     actions.append(action)
 
         return actions
+
+    def next(self, action):
+        next_state, reward = self.env.next(self.state, action)
+        self._history.append((self.state, action, reward))
+        self.set_state(next_state)
+
+    @property
+    def env(self):
+        return self._env
+
+    def set_env(self, env):
+        self._env = env
+
+    # deprecated
+    @property
+    def agents(self):
+        return self._agents
+
+    def set_agent(self, key, agent):
+        self._agents[key] = agent
+
+    def display(self):
+        print("Game Step: {}".format(self._step))
+        self._state.display()
+
+        return
 
     def step(self):
         pass
@@ -102,9 +131,98 @@ class TicTacToeGame(fmdp.FMDPIF):
         #    record current state, action, next state and reward
         # do environment
 
+        self.display()
         agent = self.agents[self.state.agent_key]
         action = agent.get_action(self.state)
 
+        return action
+
+
+class TicTacToeEnv(fmdp.EnvIF):
+    """
+    Implements an environment for tic tac toe.
+
+    The environemnt is the object that knows the rules of tic tac toe.
+    """
+
+    def __init__(self):
+        self._other_agents = None
+
+        return
+
+    def next(self, state, action):
+        assert state.agent_key == action.agent_key
+
+        if state.is_terminal():
+            return state, 0
+
+        import pdb
+        pdb.set_trace()
+        winner = self._is_game_over(state)
+        if winner is not None:
+            if winner == stage.agent_key:
+                return fmdp.TerminalState(state.agent_key), WIN
+            elif winner == TIE:
+                return fmdp.TerminalState(state.agent_key), TIE
+            else:
+                return fmdp.TerminalState(state.agent_key), LOSS
+
+        next_state = state.copy()
+        next_state.update(action)
+
+        #next_state, reward = self.env.next(self.state, action)
+        #TicTacToeState()
+        #if state.agent
+
+        return
+
+    def _is_game_over(self, state):
+        """
+        Checks if the game is over and returns the winner.
+        """
+        for row in range(NROWS):
+            tot = 0
+            for col in range(NCOLS):
+                tot += state[(row, col)]
+            if tot == XAGENTW:
+                return XAGENT
+            elif tot == OAGENTW:
+                return OAGENT
+
+        for col in range(NCOLS):
+            tot = 0
+            for row in range(NROWS):
+                tot += state[(row, col)]
+            if tot == XAGENTW:
+                return XAGENT
+            elif tot == OAGENTW:
+                return OAGENT
+
+        tot = 0
+        for row in range(NROWS):
+            tot += state[(row, row)]
+        if tot == XAGENTW:
+            return XAGENT
+        elif tot == OAGENTW:
+            return OAGENT
+        
+        tot = 0
+        for row in range(NROWS):
+            tot += state[(row, NROWS - row - 1)]
+        if tot == XAGENTW:
+            return XAGENT
+        elif tot == OAGENTW:
+            return OAGENT
+
+        tot = 0
+        for row in range(NROWS):
+            for col in range(NCOLS):
+                if state[(row, col)] != EMPTY:
+                    tot += 1
+
+        if tot == 9:
+            return TIE
+           
 
 class TicTacToeState(fmdp.StateIF):
     """
@@ -119,7 +237,7 @@ class TicTacToeState(fmdp.StateIF):
         Initializes a tic tac toe state.
 
         Params:
-            agent_key: hashable - the number of the agent whose turn it is.
+            agent_key: int|str - the key of the agent whose turn it is.
             board: list - a 3x3 array of -1, 0, 1.  
         """
 
@@ -146,28 +264,49 @@ class TicTacToeState(fmdp.StateIF):
     def display(self):
         print("Turn: {}".format(self._agent_key))
 
+        print(" ", end="")
         for row in range(NROWS):
             print(" " + str(row), end="")
         print()
 
         for row in range(NROWS):
             print(row, end="")
+            print(" ", end="")
             for col in range(NCOLS):
-                if self._board[row][col] == 0:
+                if self._board[row][col] == EMPTY:
                     print(" ", end="")
-                elif self._board[row][col] == 1:
-                    print("X", end="")
+                elif self._board[row][col] == XAGENTN:
+                    print(XAGENT, end="")
                 else:
-                    print("O", end="")
+                    print(OAGENT, end="")
                 if col != NCOLS - 1:
                     print("|", end="")
                 else:
                     print()
             if row != NROWS - 1:
-                print(" -----")
+                print("  -----")
 
-    def is_null(self):
+    def is_terminal(self):
         return False
+
+    def copy(self):
+        board = [[EMPTY] * 3, [EMPTY] * 3, [EMPTY] * 3] 
+        for row in range(NROWS):
+            for col in range(NCOLS):
+                board[row][col] = self._board[row][col]
+
+        return TicTacToeState(self.agent_key, board)
+
+    def update(self, action):
+        if action.agent_key == XAGENT:
+            self._board[action.row][action.col] = XAGENTN
+        else:
+            self._board[action.row][action.col] = OAGENTN
+
+    def __getitem__(self, key):
+        row, col = key
+
+        return self._board[row][col]
 
 
 class TicTacToeAction(fmdp.ActionIF):
@@ -180,7 +319,7 @@ class TicTacToeAction(fmdp.ActionIF):
         Initializes a tic tac toe action.
 
         Params:
-            agent_key: hashable - the key of the agent who chose the action.
+            agent_key: int|str - the key of the agent who chose the action.
             row: int - row number
             col: int - column number
         """
@@ -203,3 +342,6 @@ class TicTacToeAction(fmdp.ActionIF):
 
     def display(self):
         print("row: {} col: {}".format(self._row, self._col))
+
+    def is_null(self):
+        return False
