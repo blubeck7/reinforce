@@ -243,6 +243,7 @@ class TicTacToeState(fmdp.StateIF):
             row_tots: list - the row totals.
             col_tots: list - the columns totals.
             diag_tots: list - the diagonal totals.
+            num_empty: int - number of empty spaces.
             full: bool - if the board is full or not.
             winner: int - 1 if X, -1 if O and 0 if a tie.
         """
@@ -251,6 +252,7 @@ class TicTacToeState(fmdp.StateIF):
         self.row_tots = [0, 0, 0]
         self.col_tots = [0, 0, 0]
         self.diag_tots = [0, 0]
+        self.num_empty = 9
         self.full = False
         self.winner = None
         self._terminal = terminal
@@ -297,6 +299,8 @@ class TicTacToeState(fmdp.StateIF):
                 tot += self.board[row][col]
             self.row_tots[row] = tot 
 
+        return
+
     def calc_col_tots(self):
         """
         Calculates the column totals based on the current board.
@@ -306,6 +310,8 @@ class TicTacToeState(fmdp.StateIF):
             for row in range(NROWS):
                 tot += self.board[row][col]
             self.col_tots[col] = tot 
+
+        return
 
     def calc_diag_tots(self):
         """
@@ -321,17 +327,22 @@ class TicTacToeState(fmdp.StateIF):
             tot += self.board[NROWS - row - 1][row]
         self.diag_tots[1] = tot 
 
+        return
+
     def calc_full(self):
         """
         Checks if the board is full.
         """
-        tot = 0
+        n_empty = 0
         for row in range(NROWS):
             for col in range(NCOLS):
-                if self.board[row][col] != 0:
-                    tot += 1
-        if tot == 9:
+                if self.board[row][col] == 0:
+                    n_empty += 1
+        if n_empty == 0:
             self.full = True
+        self.num_empty = n_empty
+
+        return
 
     def copy_other(self, other):
         """
@@ -353,18 +364,25 @@ class TicTacToeState(fmdp.StateIF):
             self.diag_tots[i] = other.diag_tots[i]
 
         self.full = other.full
+        self.winner = other.winner
+
+        return
 
     def flip_player(self):
         """
-        Changes the player from X to O and vica versa.
+        Changes the player from X to O and from O to X.
         """
         self.player = -1 * self.player
+
+        return
 
     def add_piece(self, row, col):
         """
         Adds a player's piece to the board.
         """
         self.board[row][col] = self.player
+
+        return
 
     def calc_all_tots(self):
         """
@@ -374,6 +392,8 @@ class TicTacToeState(fmdp.StateIF):
         self.calc_col_tots()
         self.calc_diag_tots()
         self.calc_full()
+
+        return
 
     def list_empty_squares(self):
         """
@@ -418,6 +438,19 @@ class TicTacToeState(fmdp.StateIF):
         if self.full:
             self.winner = 0
 
+        return
+
+    def _to_std_board(self):
+        # for generating the state space
+        for row in range(NROWS):
+            for col in range(NCOLS):
+                if self._board[row][col] in [1, 2, 3, 4, 5]:
+                    self.board[row][col] = 1
+                elif self._board[row][col] in [6, 7, 8, 9]:
+                    self.board[row][col] = -1
+
+        return
+         
 
 class TicTacToeAction(fmdp.ActionIF):
     """
@@ -458,34 +491,83 @@ class TicTacToeAction(fmdp.ActionIF):
 
 
 def gen_state_space():
-    """
-    Generates all possible states in tic tac toe.
-
-    Returns:
-        list - a list of TicTacToeState objects.
-    """
-
     states = []
     init_state = TicTacToeState()
     init_state.player = 1
-    _gen_state_space(init_state, states)
+
+    return _gen_state_space(init_state, states)
+
+
+def _gen_state_space(state, states):
+    states.append(state) 
+    next_states = _get_next_states(state)
+    for next_state in next_states:
+        _gen_state_space(next_state, states)
 
     return states
 
 
-def _gen_state_space(state, states):
-    states.append(state)
+def _get_next_states(state):
     if not state.winner is None:
-        # import pdb
-        # pdb.set_trace()
-        return
+        return []
 
-    moves = state.list_empty_squares()
+    next_states = []
+
+    if state.player == 1:
+        moves = _get_x_moves(state)
+    else:
+        moves = _get_o_moves(state)
+
     for move in moves:
         next_state = TicTacToeState()
-        next_state.copy_other(state)
+        next_state.copy_other(state) 
         next_state.add_piece(*move)
         next_state.calc_all_tots()
         next_state.calc_winner()
         next_state.flip_player()
-        _gen_state_space(next_state, states)
+        next_states.append(next_state)
+    
+    return next_states
+        
+
+def _get_x_moves(state):
+    # Find right most x if the board were unraveled.
+    moves = []
+    start_row, start_col = 0, -1
+    for row in range(3):
+        for col in range(3):
+            if state.board[row][col] == 1:
+                start_row, start_col = row, col
+
+    for row in range(start_row, 3):
+        if row == start_row:
+            for col in range(start_col + 1, 3):
+                if state.board[row][col] == 0:
+                    moves.append((row, col))
+        else:
+            for col in range(3):
+                if state.board[row][col] == 0:
+                    moves.append((row, col))
+
+    return moves
+
+def _get_o_moves(state):
+    # Find right most o if the board were unraveled.
+    moves = []
+    start_row, start_col = 0, -1
+    for row in range(3):
+        for col in range(3):
+            if state.board[row][col] == -1:
+                start_row, start_col = row, col
+
+    for row in range(start_row, 3):
+        if row == start_row:
+            for col in range(start_col + 1, 3):
+                if state.board[row][col] == 0:
+                    moves.append((row, col))
+        else:
+            for col in range(3):
+                if state.board[row][col] == 0:
+                    moves.append((row, col))
+
+    return moves
