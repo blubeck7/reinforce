@@ -16,11 +16,17 @@ Exceptions:
 """
 
 
+import itertools
 from reinforce import fmdp
 
 
 XPIECE = "X"
 OPIECE = "O"
+WINNING_SQUARES = [
+    (0,1,2), (3,4,5), (6,7,8),
+    (0,3,6), (1,4,7), (2,5,8),
+    (0,4,8), (2,4,6)] 
+SQUARES = [0, 1, 2, 3, 4, 5, 6, 7, 8]  
 
 NROWS = 3
 NCOLS = 3
@@ -257,6 +263,33 @@ class TicTacToeState(fmdp.StateIF):
         self.winner = None
         self._terminal = terminal
 
+    def __eq__(self, other):
+        eq = False
+        if isinstance(other, type(self)):
+            cnt = 0
+            if self.player == other.player:
+                cnt += 1
+            if self.board == other.board:
+                cnt += 1
+            if self.row_tots == other.row_tots:
+                cnt += 1
+            if self.col_tots == other.col_tots:
+                cnt += 1
+            if self.diag_tots == other.diag_tots:
+                cnt += 1
+            if self.num_empty == other.num_empty:
+                cnt += 1
+            if self.full == other.full:
+                cnt += 1
+            if self.winner == other.winner:
+                cnt += 1
+            if self._terminal == other._terminal:
+                cnt += 1
+            if cnt == 9:
+                eq = True
+        
+        return eq
+
     def display(self):
         print("Board")
         print(" ", end="")
@@ -363,8 +396,10 @@ class TicTacToeState(fmdp.StateIF):
         for i in range(len(self.diag_tots)):
             self.diag_tots[i] = other.diag_tots[i]
 
+        self.num_empty = other.num_empty
         self.full = other.full
         self.winner = other.winner
+        self._terminal = self._terminal
 
         return
 
@@ -440,17 +475,6 @@ class TicTacToeState(fmdp.StateIF):
 
         return
 
-    def _to_std_board(self):
-        # for generating the state space
-        for row in range(NROWS):
-            for col in range(NCOLS):
-                if self._board[row][col] in [1, 2, 3, 4, 5]:
-                    self.board[row][col] = 1
-                elif self._board[row][col] in [6, 7, 8, 9]:
-                    self.board[row][col] = -1
-
-        return
-         
 
 class TicTacToeAction(fmdp.ActionIF):
     """
@@ -490,13 +514,19 @@ class TicTacToeAction(fmdp.ActionIF):
         return False
 
 
-def gen_state_space():
+def gen_state_space(by_move=True):
     states = []
     init_state = TicTacToeState()
     init_state.player = 1
+    _gen_state_space(init_state, states)
+    if by_move:
+        states_by_move = [[],[],[],[],[],[],[],[],[],[]]
+        for state in states:
+            states_by_move[9 - state.num_empty].append(state)
+        
+        return states_by_move
 
-    return _gen_state_space(init_state, states)
-
+    return states
 
 def _gen_state_space(state, states):
     states.append(state) 
@@ -504,7 +534,7 @@ def _gen_state_space(state, states):
     for next_state in next_states:
         _gen_state_space(next_state, states)
 
-    return states
+    return
 
 
 def _get_next_states(state):
@@ -571,3 +601,61 @@ def _get_o_moves(state):
                     moves.append((row, col))
 
     return moves
+
+
+def _gen_state_space_7():
+    all_states = _gen_all_states(7)
+    illegal_states = _gen_o_winning_states(7)
+    legal_states = _remove_states(all_states, illegal_states)
+
+    return legal_boards
+
+
+def _gen_all_states(moves):
+    states = [] 
+    num_x_sqs = moves // 2 + moves % 2
+    num_o_sqs = moves // 2
+
+    for x_sqs in itertools.combinations(set(SQUARES), num_x_sqs):
+        rem_sqs = set(SQUARES) - set(x_sqs)
+        for o_sqs in itertools.combinations(rem_sqs, num_o_sqs):
+            state = _create_state(x_sqs, o_sqs)
+            states.append(state)
+
+    return states
+
+
+def _gen_o_winning_states(moves):
+    assert moves >= 6
+    states = []
+    num_x_sqs = moves // 2 + moves % 2
+    num_o_sqs = max(0, moves // 2 - 3)
+
+    for win_sqs in WINNING_SQUARES:
+        rem_sqs = set(SQUARES) - set(win_sqs)
+        for x_sqs in itertools.combinations(rem_sqs, num_x_sqs):
+            rem_sqs = rem_sqs - set(x_sqs)
+            for o_sqs in itertools.combinations(rem_sqs, num_o_sqs):
+                state = _create_state(x_sqs, o_sqs)
+                states.append(state)
+
+    return states
+
+
+def _create_state(x_sqs, o_sqs):
+    state = TicTacToeState()
+
+    for x_sq in x_sqs:
+        state.board[x_sq // NROWS][x_sq % NCOLS] = 1      
+    for o_sq in o_sqs:
+        state.board[o_sq // NROWS][o_sq % NCOLS] = -1      
+    state.calc_all_tots()
+    state.calc_winner()
+    if state.num_empty % 2 == 1:
+        state.player == 1
+    else:
+        state.player == -1
+
+    return state
+
+
