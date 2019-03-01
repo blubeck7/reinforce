@@ -231,29 +231,10 @@ class StateIF(abc.ABC):
     Wrapper class for a state object.
 
     This class functions as a data structure that stores all the information
-    about a state. In addition, it declares a few basic methods that apply to
-    any state object independent of the actual FMDP.
+    about a state needed to implement the environment's dynamics. In addition,
+    it declares a few basic methods that apply to any state object independent
+    of the actual application.
     """
-
-    @property
-    @abc.abstractmethod
-    def agent_key(self):
-        """
-        Returns the key of the agent whose turn it is.
-        """
-
-        pass
-
-    @abc.abstractmethod
-    def __eq__(self, other):
-        """
-        Returns True if self and other are the same; False otherwise.
-
-        Params:
-            other: StateIF - another state object.
-        """
-
-        pass
 
     @abc.abstractmethod
     def display(self):
@@ -266,23 +247,10 @@ class StateIF(abc.ABC):
     @abc.abstractmethod
     def is_terminal(self):
         """
-        Returns true if the terminal state.
-        """
+        Returns True if the terminal state.
 
-        pass
-
-    @abc.abstractmethod
-    def copy(self):
-        """
-        Returns a copy of itself.
-        """
-
-        pass
-
-    @abc.abstractmethod
-    def update(self, action):
-        """
-        Updates itself based on the action.
+        The terminal state is the state that transitions to itself and rewards
+        zero.
         """
 
         pass
@@ -317,48 +285,6 @@ class ActionIF(abc.ABC):
         """
 
         pass
-
-
-class TerimnalState(StateIF):
-    """
-    Terminal state object.
-
-    This class defines the terminal state, which is a state that always
-    transitions to itself and rewards zero.
-    """
-
-    def __init__(self, agent_key):
-        """
-        Initializes the terminal state.
-
-        Params:
-            agent_key: int|str - the agent who is in the terminal state.
-        """
-
-        self._agent_key = agent_key
-
-    @property
-    def agent_key(self):
-        return self._agent_key
-
-    def __eq__(self, other):
-        if isinstance(other, type(self)) and (
-            self.is_terminal() == other.is_terminal()):
-            return True
-
-        return False
-
-    def display(self):
-        print("Terminal State")
-
-    def is_terminal(self):
-        return True
-
-    def copy(self):
-        return type(self)(self.agent_key)
-
-    def update(self, action):
-        return self
 
 
 class NullAction(ActionIF):
