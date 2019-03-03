@@ -253,7 +253,7 @@ class TicTacToeState(fmdp.StateIF):
             full: bool - if the board is full or not.
             winner: int - 1 if X, -1 if O and 0 if a tie.
         """
-        self.player = None
+        self.player = 1
         self.board = [[0, 0, 0], [0, 0, 0], [0, 0, 0]]
         self.row_tots = [0, 0, 0]
         self.col_tots = [0, 0, 0]
@@ -514,101 +514,47 @@ class TicTacToeAction(fmdp.ActionIF):
         return False
 
 
-def gen_state_space(by_move=True):
+def gen_state_space(sort_by_move=True):
+    """
+    Generates all the possible states in tic tac toe.
+
+    Including the empty board, there are 5,478 board combinations, which can be
+    proven using a combinatorial argument. This method generates all of the
+    possible states and returns them as a list.
+
+    Params:
+        sort_by_move: bool - whether to sort the states by the number of moves.
+
+    Returns:
+        list - if the sort_by_move is true, then a list of length 10 is
+        returned where each element is a list of the states after that many
+        moves. If sort_by_move is false, then list of length 5,478 is returned.
+    """
+
     states = []
-    init_state = TicTacToeState()
-    init_state.player = 1
-    _gen_state_space(init_state, states)
-    if by_move:
-        states_by_move = [[],[],[],[],[],[],[],[],[],[]]
-        for state in states:
-            states_by_move[9 - state.num_empty].append(state)
-        
-        return states_by_move
+    for moves in range(10):
+        states_per_moves = _gen_state_space(moves)
+        if sort_by_move:
+            states.append(states_per_moves)
+        else:
+            states.extend(states_per_moves)
 
     return states
 
-def _gen_state_space(state, states):
-    states.append(state) 
-    next_states = _get_next_states(state)
-    for next_state in next_states:
-        _gen_state_space(next_state, states)
 
-    return
+def _gen_state_space(moves):
+    # handle zero moves as a special case
+    if moves == 0:
+        return [_create_state((), ())]
 
-
-def _get_next_states(state):
-    if not state.winner is None:
-        return []
-
-    next_states = []
-
-    if state.player == 1:
-        moves = _get_x_moves(state)
+    all_states = _gen_all_states(moves)
+    if moves // 2 == 0:
+        illegal_states = _gen_x_winning_states(moves)
     else:
-        moves = _get_o_moves(state)
-
-    for move in moves:
-        next_state = TicTacToeState()
-        next_state.copy_other(state) 
-        next_state.add_piece(*move)
-        next_state.calc_all_tots()
-        next_state.calc_winner()
-        next_state.flip_player()
-        next_states.append(next_state)
-    
-    return next_states
-        
-
-def _get_x_moves(state):
-    # Find right most x if the board were unraveled.
-    moves = []
-    start_row, start_col = 0, -1
-    for row in range(3):
-        for col in range(3):
-            if state.board[row][col] == 1:
-                start_row, start_col = row, col
-
-    for row in range(start_row, 3):
-        if row == start_row:
-            for col in range(start_col + 1, 3):
-                if state.board[row][col] == 0:
-                    moves.append((row, col))
-        else:
-            for col in range(3):
-                if state.board[row][col] == 0:
-                    moves.append((row, col))
-
-    return moves
-
-def _get_o_moves(state):
-    # Find right most o if the board were unraveled.
-    moves = []
-    start_row, start_col = 0, -1
-    for row in range(3):
-        for col in range(3):
-            if state.board[row][col] == -1:
-                start_row, start_col = row, col
-
-    for row in range(start_row, 3):
-        if row == start_row:
-            for col in range(start_col + 1, 3):
-                if state.board[row][col] == 0:
-                    moves.append((row, col))
-        else:
-            for col in range(3):
-                if state.board[row][col] == 0:
-                    moves.append((row, col))
-
-    return moves
-
-
-def _gen_state_space_7():
-    all_states = _gen_all_states(7)
-    illegal_states = _gen_o_winning_states(7)
+        illegal_states = _gen_o_winning_states(moves)
     legal_states = _remove_states(all_states, illegal_states)
 
-    return legal_boards
+    return legal_states
 
 
 def _gen_all_states(moves):
@@ -626,23 +572,58 @@ def _gen_all_states(moves):
 
 
 def _gen_o_winning_states(moves):
-    assert moves >= 6
+    if moves < 6:
+        return []
+
     states = []
     num_x_sqs = moves // 2 + moves % 2
-    num_o_sqs = max(0, moves // 2 - 3)
+    num_o_sqs = moves // 2
+    num_rem_o_sqs = max(0, num_o_sqs - 3)
 
     for win_sqs in WINNING_SQUARES:
         rem_sqs = set(SQUARES) - set(win_sqs)
         for x_sqs in itertools.combinations(rem_sqs, num_x_sqs):
-            rem_sqs = rem_sqs - set(x_sqs)
-            for o_sqs in itertools.combinations(rem_sqs, num_o_sqs):
-                state = _create_state(x_sqs, o_sqs)
+            o_rem_sqs = rem_sqs - set(x_sqs)
+            for o_sqs in itertools.combinations(o_rem_sqs, num_rem_o_sqs):
+                state = _create_state(x_sqs, o_sqs + win_sqs)
                 states.append(state)
 
     return states
 
 
+def _gen_x_winning_states(moves):
+    if moves < 6:
+        return []
+
+    states = []
+    num_x_sqs = moves // 2 + moves % 2
+    num_o_sqs = moves // 2
+    num_rem_x_sqs = max(0, num_x_sqs - 3)
+
+    for win_sqs in WINNING_SQUARES:
+        rem_sqs = set(SQUARES) - set(win_sqs)
+        for o_sqs in itertools.combinations(rem_sqs, num_o_sqs):
+            x_rem_sqs = rem_sqs - set(o_sqs)
+            for x_sqs in itertools.combinations(x_rem_sqs, num_rem_x_sqs):
+                state = _create_state(x_sqs + win_sqs, o_sqs)
+                states.append(state)
+
+    return states
+
+
+def _remove_states(all_states, illegal_states):
+    for illegal_state in illegal_states:
+        # all_states is a list and the remove method uses the class's __eq__
+        # method to test for equality
+        all_states.remove(illegal_state) 
+    
+    return all_states
+
+
 def _create_state(x_sqs, o_sqs):
+    if not x_sqs and not o_sqs:
+        return TicTacToeState()
+
     state = TicTacToeState()
 
     for x_sq in x_sqs:
@@ -652,10 +633,8 @@ def _create_state(x_sqs, o_sqs):
     state.calc_all_tots()
     state.calc_winner()
     if state.num_empty % 2 == 1:
-        state.player == 1
+        state.player = 1
     else:
-        state.player == -1
+        state.player = -1
 
     return state
-
-
