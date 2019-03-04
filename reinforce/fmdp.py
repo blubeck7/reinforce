@@ -1,3 +1,5 @@
+#TODO: For now keep all the abstract reinforcement learning code in this file.
+#TODO: May break it out into multiple files later.
 """
 Finite Markov Decision Process (FMDP) Module.
 
@@ -36,6 +38,18 @@ class FMDPIF(abc.ABC):
     Declares the methods a finite Markov decision process (FMDP) implements.
     """
 
+    @property
+    @abc.abstractmethod
+    def agent(self):
+        """
+        The agent configured for the FMDP.
+
+        Returns:
+            AgentIF - the agent configured for the FMDP.
+        """
+
+
+    # Scratch space
     @property
     @abc.abstractmethod
     def state(self):
@@ -318,11 +332,229 @@ class NullAction(ActionIF):
         return True
 
 
-#class TurnGame(FMDP):
-    #"""
-    #Defines base class for turn based games
-    #"""
+class AgentIF(abc.ABC):
+    """
+    Declares the methods that an agent object implements.
+    """
+
+    @property
+    @abc.abstractmethod
+    def name(self):
+        """
+        Returns the agent's name.
+
+        Returns:
+            ActionIF - the choosen action.
+        """
+
+        pass
+
+
+    @property
+    @abc.abstractmethod
+    def policy(self):
+        """
+        Returns the agent's policy.
+        """
+
+        pass
+
+    @abc.abstractmethod
+    def set_policy(self, policy):
+        """
+        Sets the agent's policy.
+        
+        Params:
+            policy: PolicyIF - the policy to use.
+        """
+        
+        pass
 #
-    #pass
+
+    # scratch space
+    #@property
+    #@abc.abstractmethod
+    #def fmdp(self):
+        #"""
+        #Returns the FMDP that the agent is for.
+        #"""
+        #
+        #pass
+#
+    #@abc.abstractmethod
+    #def set_fmdp(self, fmdp):
+        #"""
+        #Sets the FMDP that the agent is for.
+#
+        #Params:
+            #fmdp: FMDPIF - the FMDP to use.
+        #"""
+        #
+        #pass
+#
+
+    #@abc.abstractmethod
+    #def get_action(self, state):
+        #"""
+        #Selects an action from the given state based on the agent's policy.
+#
+        #Params:
+            #state: StateIF - the state from which to choose an action.
+#
+        #Returns:
+            #ActionIF - the agent's selected action.
+        #"""
+#
+        #pass
+#
+    #@abc.abstractmethod
+    #def run(self):
+        #"""
+        #Runs the agent.
+#
+        #This method starts the iterative sequence of the agent taking an action
+        #followed by the environment responding with a new state and reward.
+        #"""
+#
+        #pass
+
+
+class Agent(AgentIF):
+    """
+    Defines an agent.
+
+    An agent is a thing capable of taking actions. It does so acccording to a
+    policy. Three important policies independent of the actual FMDP are the
+    random policy, the greedy policy and the optimal policy.
+    """
+
+    def __init__(self, name):
+        """
+        Initializes the agent.
+
+        Params:
+            name: str - the name to use.
+        """
+        # fmdp: FMDPIF - the fmdp configured with the true environment.
+        # policy: PolicyIF - the agent's policy.
+        # act_env - the true environment's dynamics.
+        # est_env - the agent's estimate of the environment's dynamics.
+
+        self._name = name
+        self._fmdp = None
+        self._policy = None
+        self._act_env = None
+        self._est_env = None
+
+        return
+
+    @property
+    def name(self):
+        return self._name
+
+    @property
+    def fmdp(self):
+        return self._fmdp
+
+    def set_fmdp(self, fmdp):
+        self._fmdp = fmdp
+
+    @property
+    def policy(self):
+        return self._policy
+
+    def set_policy(self, policy):
+        self._policy = policy
+
+    def get_action(self, state):
+        return self._policy.get_action(state, self.fmdp)
+
+    def run(self):
+        while not self.fmdp.is_terminal():
+            action = self.get_action(self.fmdp.state)
+            self.fmdp.next(action)
+
+
+class PolicyIF(abc.ABC):
+    """
+    Declares the methods that a policy object implements.
+
+    A policy is a function that assigns a state to a conditional probability
+    function over the possible actions from the state.
+    """
+
+    @abc.abstractmethod
+    def select_action(self, state, fmdp):
+        """
+        Selects an available action at the given state.
+
+        Params:
+            state: StateIF - a state object.
+            fmdp: FMDPIF - the FMDP from which the state object is.
+
+        Returns:
+            ActionIF - the selected action.
+        """
+
+        pass
+
+
+class GreedyPolicy(PolicyIF):
+    """
+    Sets the greedy policy.
+
+    The greedy policy is the policy that selects the action that maximizes
+    the expected value of the sum of the next reward and the value of the
+    next state based on an existing policy.
+    """
+
+    def __init__(self, policy, discount=1):
+        """
+        Initializes the greedy policy.
+
+        Params:
+            policy: PolicyIF - an existing policy.
+            discount: float - the discount factor to use. For episodic tasks,
+                the discount factor can be 1. For indefinite tasks, the
+                discount factor must be strictly less than 1.
+        """
+            
+        self._discount = discount
+        self._policy = policy
+
+    @property
+    def discount(self):
+        return self._discount
+
+    def set_discount(self, discount):
+        self._discount = discount
+
+    def select_action(self, state, fmdp):
+        values = []
+        actions = fmdp.list_actions(state)
+        for action in actions:
+            responses = fmdp.list_responses(action)
+            for response in responses:
+                next_state, reward, prob = response
+                value = prob*(reward + self.discount)
+                #values.append(
+                
+
+
+class LookupPolicy:#(refmdp.PolicyIF):
+    """
+    Defines a lookup policy.
+
+    A lookup policy is a policy that uses a lookup table to determine the
+    action to take from a state. The lookup up table is an exhaustive
+    enumeration of all the possible states.
+    """
+
+    def __init__(self):
+        self._state_action_map = dict()
+        return
+
+    def select_action(self, state, fmdp):
+        pass
 
 

@@ -17,6 +17,7 @@ Exceptions:
 
 
 import itertools
+import random
 from reinforce import fmdp
 
 
@@ -35,9 +36,9 @@ TIE = 0
 LOSS = -1
 
 
-class TicTacToeGame(fmdp.FMDPIF):
+class TicTacToeGame:#(base.EnumFMDPIF):
     """
-    This class implements the game tic tac toe as a FMDP.
+    This class implements the game tic tac toe as an enumerable FMDP.
     """
 
     def __init__(self):
@@ -52,14 +53,19 @@ class TicTacToeGame(fmdp.FMDPIF):
         # step: int - the current step.
 
         #self._agents = {XAGENT: None, OAGENT: None} 
+        self._agent = 1
         self._env = TicTacToeEnv()
-        self._init_state = TicTacToeState(
-            XAGENT, [[EMPTY]*3, [EMPTY]*3, [EMPTY]*3])
+        self._init_state = TicTacToeState()
         self._state = self._init_state
         self._history = []
         self._step = 0
+        self._states = gen_state_space(False)
 
         return
+
+    @property
+    def states(self):
+        return self._states 
 
     @property
     def state(self):
@@ -71,7 +77,7 @@ class TicTacToeGame(fmdp.FMDPIF):
     def is_terminal(self):
         return self.state.is_terminal()
 
-    def get_actions(self, state=None):
+    def list_actions(self, state=None):
         if state:
             return self._get_actions(state)
 
@@ -80,14 +86,70 @@ class TicTacToeGame(fmdp.FMDPIF):
     def _get_actions(self, state):
         # TODO: Move this logic to TicTacToeEnv since that object is the object
         # that knows the rules.
+        if self.agent != state.player:
+            return [TicTacToeAction(self.agent, -1, -1, True)]
+
+        if not state.winner is None:
+            return [TicTacToeAction(self.agent, -1, -1, True)]
+
         actions = [] 
-        for row in range(NROWS):
-            for col in range(NCOLS):
-                if state._board[row][col] == 0:
-                    action = TicTacToeAction(state.agent_key, row, col)
-                    actions.append(action)
+        for sq in state.list_empty_squares():
+            action = TicTacToeAction(self.agent, sq[0], sq[1])
+            actions.append(action)
 
         return actions
+
+    def list_responses(self, state, action):
+        # TODO: Move this logic to TicTacToeEnv since that object is the object
+        # that knows the rules.
+        # Responses is a list of tuples of next state, reward, prob
+        # rewards given out when game state has a winner 
+        if state.is_terminal():
+            return [(state, 0, 1)]
+
+        import pdb
+        pdb.set_trace()
+        responses = []
+        if state.player == action.agent and state.winner is None:
+            # player's turn, game not over
+            next_state = TicTacToeState()
+            next_state.copy_other(state)
+            next_state.board[action.row][action.col] = action.agent
+            next_state.calc_all_tots()
+            next_state.calc_winner()
+            next_state.flip_player()
+            reward = 0
+            prob = 1
+            responses.append((next_state, reward, prob))
+        elif state.player == action.agent and not state.winner is None:
+            # player's turn, game is over
+            next_state = TicTacToeState(True)
+            reward = state.winner
+            prob = 1
+            responses.append((next_state, reward, prob))
+        elif state.player != action.agent and state.winner is None:
+            # environment's turn, game is not over
+            # TODO: move this to the enviroment object. For just a the random
+            # environment or agent.
+            actions = self.list_actions(self, state)
+            for action in actions:
+                next_state = TicTacToeState()
+                next_state.copy_other(state)
+                next_state.board[action.row][action.col] = state.player
+                next_state.calc_all_tots()
+                next_state.calc_winner()
+                next_state.flip_player()
+                reward = 0
+                prob = 1 / len(actions)
+                responses.append((next_state, reward, prob))
+        else:
+            # environment's turn, game is over
+            next_state = TicTacToeState(True)
+            reward = state.winner
+            prob = 1
+            responses.append((next_state, reward, prob))
+
+        return responses 
 
     def next(self, action):
         next_state, reward = self.env.next(self.state, action)
@@ -103,11 +165,11 @@ class TicTacToeGame(fmdp.FMDPIF):
 
     # deprecated
     @property
-    def agents(self):
-        return self._agents
+    def agent(self):
+        return self._agent
 
-    def set_agent(self, key, agent):
-        self._agents[key] = agent
+    def set_agent(self, agent):
+        self._agent = agent
 
     def display(self):
         print("Game Step: {}".format(self._step))
@@ -226,7 +288,7 @@ class TicTacToeEnv(fmdp.EnvIF):
             return TIE
            
 
-class TicTacToeState(fmdp.StateIF):
+class TicTacToeState:#(base.EnumStateIF):
     """
     This class implements a state in the game tic tac toe.
 
@@ -253,6 +315,7 @@ class TicTacToeState(fmdp.StateIF):
             full: bool - if the board is full or not.
             winner: int - 1 if X, -1 if O and 0 if a tie.
         """
+        self._id = None
         self.player = 1
         self.board = [[0, 0, 0], [0, 0, 0], [0, 0, 0]]
         self.row_tots = [0, 0, 0]
@@ -262,6 +325,10 @@ class TicTacToeState(fmdp.StateIF):
         self.full = False
         self.winner = None
         self._terminal = terminal
+
+    @property
+    def id(self):
+        return self._id
 
     def __eq__(self, other):
         eq = False
@@ -476,28 +543,29 @@ class TicTacToeState(fmdp.StateIF):
         return
 
 
-class TicTacToeAction(fmdp.ActionIF):
+class TicTacToeAction:#(base.EnumActionIF):
     """
     This class defines an action in tic tac toe.
     """
     
-    def __init__(self, agent_key, row, col):
+    def __init__(self, agent, row, col, null=False):
         """
         Initializes a tic tac toe action.
 
         Params:
-            agent_key: int|str - the key of the agent who chose the action.
+            agent: int|str - the key of the agent who chose the action.
             row: int - row number
             col: int - column number
         """
 
-        self._agent_key = agent_key
+        self._agent = agent
         self._row = row
         self._col = col
+        self._null = null
 
     @property
-    def agent_key(self):
-        return self._agent_key
+    def agent(self):
+        return self._agent
 
     @property
     def row(self):
@@ -511,7 +579,7 @@ class TicTacToeAction(fmdp.ActionIF):
         print("row: {} col: {}".format(self._row, self._col))
 
     def is_null(self):
-        return False
+        return self._null
 
 
 def gen_state_space(sort_by_move=True):
