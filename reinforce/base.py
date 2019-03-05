@@ -1,6 +1,12 @@
 #TODO: For now keep all the abstract reinforcement learning code in this file.
 #TODO: May break it out into multiple files later.
 """
+Base Module
+
+This module contains the interfaces to create classes that are specific to a
+given application and can be used by the various reinforcement learning
+algorithms.
+
 Finite Markov Decision Process (FMDP) Module.
 
 This module contains the basic functionality of a finite Markov decision
@@ -38,15 +44,15 @@ class FMDPIF(abc.ABC):
     Declares the methods a finite Markov decision process (FMDP) implements.
     """
 
-    @property
-    @abc.abstractmethod
-    def agent(self):
-        """
-        The agent configured for the FMDP.
+    # @property
+    # @abc.abstractmethod
+    # def agent(self):
+        # """
+        # The agent configured for the FMDP.
 
-        Returns:
-            AgentIF - the agent configured for the FMDP.
-        """
+        # Returns:
+            # AgentIF - the agent configured for the FMDP.
+        # """
 
 
     # Scratch space
@@ -70,147 +76,177 @@ class FMDPIF(abc.ABC):
 
         pass
 
-    @abc.abstractmethod
-    def is_terminal(self):
-        """
-        Returns True if the current state is the terminal state.
-        """
+    # @abc.abstractmethod
+    # def is_terminal(self):
+        # """
+        # Returns True if the current state is the terminal state.
+        # """
 
-        pass
+        # pass
 
-    @abc.abstractmethod
-    def get_actions(self, state=None):
-        """
-        Returns a list of the possible actions for a given state. 
+    # @abc.abstractmethod
+    # def get_actions(self, state=None):
+        # """
+        # Returns a list of the possible actions for a given state. 
 
-        Params:
-            state: StateIF - a state object. If None, then a list of the
-                actions for the current state is returned.
+        # Params:
+            # state: StateIF - a state object. If None, then a list of the
+                # actions for the current state is returned.
 
-        Returns:
-            list[ActionIF] - a list of the possible actions.
+        # Returns:
+            # list[ActionIF] - a list of the possible actions.
             
-        """
+        # """
 
-        pass
+        # pass
 
-    @abc.abstractmethod
-    def next(self, action):
-        """
-        Updates the FMDP.
+    # @abc.abstractmethod
+    # def next(self, action):
+        # """
+        # Updates the FMDP.
 
-        This method transitions the FMDP to a new state and gives a reward
-        based on the environment's dynamics.
+        # This method transitions the FMDP to a new state and gives a reward
+        # based on the environment's dynamics.
 
-        Params:
-            action: ActionIF - the chosen action.
-        """
+        # Params:
+            # action: ActionIF - the chosen action.
+        # """
 
-        pass
+        # pass
+
+    # @property
+    # @abc.abstractmethod
+    # def env(self):
+        # """
+        # The FMDP's environment.
+
+        # Returns:
+            # EnvIF - the environemnt object.
+        # """
+
+        # oass
+
+    # @abc.abstractmethod
+    # def set_env(self, env):
+        # """
+        # Sets the environment.  
+
+        # Params:
+            # env: EnvIF - a environment object. 
+        # """
+
+        # pass
+
+    # @property
+    # @abc.abstractmethod
+    # def history(self):
+        # """
+        # Returns the history of the FMDP's states, actions and rewards.
+
+        # Returns:
+            # list - a list of tuples. Each tuple has three elements. The first
+                # element is the state, the second element is the action and the
+                # third element is the reward. The tuples are in order of the
+                # time they were encountered from earliest to latest.
+        # """
+
+        # pass
+
+    # @abc.abstractmethod
+    # def reset(self):
+        # """
+        # Resets the FMDP.
+
+        # This method resets the FMDP by returning it to its initial state and
+        # clears the FMDP's history.
+        # """
+
+        # pass
+
+    # @abc.abstractmethod
+    # def display(self):
+        # """
+        # Displays the FMDP as a printable string.
+        # """
+
+        # pass
+
+
+
+
+
+    # # deprecated
+    # @property
+    # @abc.abstractmethod
+    # def agents(self):
+        # """
+        # Returns a dictionary of the registered agents for the FMDP.
+        # """
+
+        # pass
+
+    # @abc.abstractmethod
+    # def run(self):
+        # """
+        # Runs the FMDP according to its specific environment and rules.
+        # """
+
+        # pass
+
+# #    @abc.abstractmethod
+# #    def do_action(self, action):
+# #        """
+# #        Updates the FMDP with the given action.
+# #
+# #        Params:
+# #            action: ActionIF - the action to do.
+# #        """
+# #
+# #        pass
+# #
+# #    @abc.abstractmethod
+# #    def do_env(self):
+# #        """
+# #        Simulates the environment one step based the current state, choosen
+# #        action and environment dynamics.
+# #        """
+# #
+# #        pass
+# #
+    # @abc.abstractmethod
+    # def step(self):
+        # """
+        # Performs a single step of the FMDP.
+        # """
+
+        # pass
+
+
+class EnumFMDPIF(FMDPIF):
+    """
+    Defines an enumerable FMDP.
+
+    An enumerable FMDP is a FMDP such that it is feasible to enumerate the
+    entire state space.
+    """
 
     @property
     @abc.abstractmethod
-    def env(self):
+    def states(self):
         """
-        The FMDP's environment.
+        Returns a list of all the possible states including the terminal state.
+        """
+
+        pass
+
+    @abc.abstractmethod
+    def list_responses(self, state, action):
+        """
+        Lists the possible responses for an action from a given state.
 
         Returns:
-            EnvIF - the environemnt object.
-        """
-
-        oass
-
-    @abc.abstractmethod
-    def set_env(self, env):
-        """
-        Sets the environment.  
-
-        Params:
-            env: EnvIF - a environment object. 
-        """
-
-        pass
-
-    @property
-    @abc.abstractmethod
-    def history(self):
-        """
-        Returns the history of the FMDP's states, actions and rewards.
-
-        Returns:
-            list - a list of tuples. Each tuple has three elements. The first
-                element is the state, the second element is the action and the
-                third element is the reward. The tuples are in order of the
-                time they were encountered from earliest to latest.
-        """
-
-        pass
-
-    @abc.abstractmethod
-    def reset(self):
-        """
-        Resets the FMDP.
-
-        This method resets the FMDP by returning it to its initial state and
-        clears the FMDP's history.
-        """
-
-        pass
-
-    @abc.abstractmethod
-    def display(self):
-        """
-        Displays the FMDP as a printable string.
-        """
-
-        pass
-
-
-
-
-
-    # deprecated
-    @property
-    @abc.abstractmethod
-    def agents(self):
-        """
-        Returns a dictionary of the registered agents for the FMDP.
-        """
-
-        pass
-
-    @abc.abstractmethod
-    def run(self):
-        """
-        Runs the FMDP according to its specific environment and rules.
-        """
-
-        pass
-
-#    @abc.abstractmethod
-#    def do_action(self, action):
-#        """
-#        Updates the FMDP with the given action.
-#
-#        Params:
-#            action: ActionIF - the action to do.
-#        """
-#
-#        pass
-#
-#    @abc.abstractmethod
-#    def do_env(self):
-#        """
-#        Simulates the environment one step based the current state, choosen
-#        action and environment dynamics.
-#        """
-#
-#        pass
-#
-    @abc.abstractmethod
-    def step(self):
-        """
-        Performs a single step of the FMDP.
+            list - a list where each element is a list containing a possible
+            next state, a possible reward and the corresponding probability.
         """
 
         pass
@@ -269,36 +305,41 @@ class StateIF(abc.ABC):
 
         pass
 
+    @abc.abstractmethod
+    def __eq__(self, other):
+        pass
+
 
 class ActionIF(abc.ABC):
     """
     Declares the methods that an action object implements.
     """
+    pass
 
     @property
     @abc.abstractmethod
-    def agent_key(self):
+    def agent(self):
         """
-        Returns the key of the agent who chose the action.
-        """
-
-        pass
-
-    @abc.abstractmethod
-    def display(self):
-        """
-        Displays the action as a printable string.
+        Returns the agent who chose the action.
         """
 
         pass
 
-    @abc.abstractmethod
-    def is_null(self):
-        """
-        Returns true if the null action.
-        """
+    # @abc.abstractmethod
+    # def display(self):
+        # """
+        # Displays the action as a printable string.
+        # """
 
-        pass
+        # pass
+
+    # @abc.abstractmethod
+    # def is_null(self):
+        # """
+        # Returns true if the null action.
+        # """
+
+        # pass
 
 
 class NullAction(ActionIF):
@@ -477,23 +518,41 @@ class Agent(AgentIF):
 
 class PolicyIF(abc.ABC):
     """
-    Declares the methods that a policy object implements.
+    Declares the methods a policy object implements.
 
     A policy is a function that assigns a state to a conditional probability
     function over the possible actions from the state.
     """
 
     @abc.abstractmethod
-    def select_action(self, state, fmdp):
+    def list_actions(self, state, fmdp):
         """
-        Selects an available action at the given state.
+        Lists the possible actions from a given state with nonzero probability.
 
         Params:
             state: StateIF - a state object.
             fmdp: FMDPIF - the FMDP from which the state object is.
 
         Returns:
-            ActionIF - the selected action.
+            list[list[ActionIF, float]] - a list where each element is a list
+            containing an action and its corresponding nonzero probability.
+        """
+
+        pass
+
+    @property
+    @abc.abstractmethod
+    def discount(self):
+        """
+        Returns the policy's discount factor.
+        """
+        
+        pass
+    
+    @abc.abstractmethod
+    def set_discount(self):
+        """
+        Sets the policy's discount factor.
         """
 
         pass

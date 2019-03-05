@@ -1,8 +1,8 @@
 """
-Algorithm Module.
+Dynamic Programming Module.
 
-This module implements the algorithms described in the book Introduction to
-Reinforcement Learning 2nd ed. by Barto and Sutton.  
+This module implements the dynamic programming algorithms described in the book
+Introduction to Reinforcement Learning 2nd ed. by Barto and Sutton.  
 
 Classes:
 Functions:
@@ -10,6 +10,78 @@ Constants:
 Exceptions:
 """
 
+
+def eval_policy(policy, fmdp, delta=10**-6, iters=500):
+    """
+    Evaluates a policy using iterative policy evaluation.
+
+    This function evaluates a policy using iterative policy evaluation. Like
+    other dynamic programming algorithms, it assumes that the FMDP's state
+    space is enumerable and that the FMDP's dynamics are known. 
+
+    Params:
+        policy: PolicyIF - the policy to evaluate.
+        fmdp: EnumFMDPIF - an enumerable FMDP.
+        delta: float - this number determines when the algorithm is considered
+            to have converged. The algorithm stops after a sweep of the state
+            space if the maximum absolute value change is less than delta.
+
+    Returns:
+        list - a list of lists where each element is a state, value pair.
+    """
+    state_values = []
+    for state in fmdp.states:
+        state_values.append([state, 0])
+
+    n = 0
+    while True:
+        diff = 0
+        n += 1
+        for state_value in state_values:
+            value = state_value[1]
+            state_value[1] = update_state_value(state_value[0], policy, fmdp,
+                                                state_values)
+            diff = max(diff, abs(value - state_value[1]))
+
+        if diff < delta or n > iters:
+            break
+
+    return state_values
+
+
+def update_state_value(state, policy, fmdp, state_values):
+    new_value = 0
+    action_probs = policy.list_actions(state, fmdp)
+    for action, aprob in action_probs:
+        responses = fmdp.list_responses(state, action)
+        for next_state, reward, prob in responses:
+            value = lookup_state_value(next_state, state_values) 
+            new_value += aprob * prob * (reward + policy.discount * value)
+
+    return new_value
+
+
+def lookup_state_value(state, state_values):
+    for state_value in state_values:
+        if state == state_value[0]:
+            return state_value[1]
+    
+
+def print_state_values(state_values):
+    for n, state_value in enumerate(state_values):
+        print(n, state_value[1])
+    
+
+def impr_policy(state_values, policy, fmdp):
+    """
+    Constructs the one-step ahead greedy policy based on the state values.
+    """
+    
+    pass
+
+
+def iter_policy(self, fmdp):
+    pass
 
 class DPSolver:
     """
