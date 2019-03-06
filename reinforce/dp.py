@@ -11,6 +11,9 @@ Exceptions:
 """
 
 
+from reinforce import base
+
+
 def eval_policy(policy, fmdp, delta=10**-6, iters=500):
     """
     Evaluates a policy using iterative policy evaluation.
@@ -74,10 +77,50 @@ def print_state_values(state_values):
 
 def impr_policy(state_values, policy, fmdp):
     """
-    Constructs the one-step ahead greedy policy based on the state values.
+    Constructs a one-step ahead greedy policy based on the state values.
+
+    This function constructs a one-step ahead greedy policy based on the
+    state values for the policy. Note that there may be more than one action
+    that is optimal from a given state.
     """
     
-    pass
+    state_actions = []
+    for state_value in state_values:
+        state_action = [None, None]   
+        state_action[0] = state_value[0]
+        state_action[1] = calc_best_action(
+            state_action[0], state_values, policy.discount, fmdp)
+        state_actions.append(state_action)
+
+    return base.LookupPolicy(state_actions, policy.discount) 
+        
+
+def calc_best_action(state, state_values, discount, fmdp):
+    actions = fmdp.list_actions(state)
+    best_action = actions[0]
+    best_value = calc_action_value(
+        state, best_action, state_values, discount, fmdp) 
+    for action in actions[1:]:
+        value = calc_action_value(state, action, state_values, discount, fmdp)
+        if value > best_value:
+            best_action = action
+            best_value = value
+
+    return best_action
+
+
+def calc_action_value(state, action, state_values, discount, fmdp):
+    """
+    Calculates the one-step ahead value of an action from a given state.
+    """
+
+    new_value = 0 
+    responses = fmdp.list_responses(state, action)
+    for next_state, reward, prob in responses:
+        value = lookup_state_value(next_state, state_values) 
+        new_value += prob * (reward + discount * value)
+
+    return new_value
 
 
 def iter_policy(self, fmdp):

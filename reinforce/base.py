@@ -540,6 +540,21 @@ class PolicyIF(abc.ABC):
 
         pass
 
+    #@abc.abstractmethod
+    def lookup_state_value(self, state, fmdp):
+        """
+        Returns the value of the state under the policy.
+
+        Params:
+            state: StateIF - a state object.
+            fmdp: FMDPIF - the FMDP from which the state object comes.
+
+        Returns:
+            float - the numeric value of the state under the policy.
+        """
+
+        pass
+
     @property
     @abc.abstractmethod
     def discount(self):
@@ -597,10 +612,9 @@ class GreedyPolicy(PolicyIF):
                 next_state, reward, prob = response
                 value = prob*(reward + self.discount)
                 #values.append(
-                
 
 
-class LookupPolicy:#(refmdp.PolicyIF):
+class LookupPolicy(PolicyIF):
     """
     Defines a lookup policy.
 
@@ -609,11 +623,25 @@ class LookupPolicy:#(refmdp.PolicyIF):
     enumeration of all the possible states.
     """
 
-    def __init__(self):
-        self._state_action_map = dict()
-        return
+    def __init__(self, state_actions, discount=1):
+        """
+        Initializes the lookup policy.
 
-    def select_action(self, state, fmdp):
-        pass
+        Params:
+            state_actions: list - a list of tuples of state, action pairs.
+        """
 
+        self._state_actions = state_actions 
+        self._discount = discount
 
+    @property
+    def discount(self):
+        return self._discount
+
+    def set_discount(self, discount):
+        self._discount = discount
+
+    def list_actions(self, state, fmdp):
+        for state_action in state_actions:
+            if state == state_action[0]:
+                return [[state_action[1], 1]]
