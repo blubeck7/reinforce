@@ -124,7 +124,36 @@ def calc_action_value(state, action, state_values, discount, fmdp):
 
 
 def iter_policy(self, fmdp):
-    pass
+    """
+    Determines the optimal policy using policy iteration.
+
+    This function determines the optimal policy for an enumerbale FMDP
+    using policy iteration.
+
+    Params:
+        fmdp: EnumFMDPIF - an enumerable FMDP object. 
+    """
+
+    # Note that a state always has at least one action, the null action 
+    state_values = []
+    state_actions = []
+    for state in fmdp.states:
+        state_values.append([state, 0])
+        state_actions.append([state, fmdp.list_actions(state)[0]])
+
+    # There can be two or more optimal policies because two or more different
+    stable = False
+    while not stable:
+        stable = self._do_policy_eval(fmdp)
+        self._do_policy_impr(fmdp)
+
+
+
+
+
+
+
+
 
 class DPSolver:
     """
