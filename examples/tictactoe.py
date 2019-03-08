@@ -18,7 +18,7 @@ Exceptions:
 
 import itertools
 import random
-from reinforce import fmdp
+from reinforce import base 
 
 
 XPIECE = "X"
@@ -36,7 +36,7 @@ TIE = 0
 LOSS = -1
 
 
-class TicTacToeGame:#(base.EnumFMDPIF):
+class TicTacToeGame(base.EnumFMDPIF):
     """
     This class implements the game tic tac toe as an enumerable FMDP.
     """
@@ -53,15 +53,22 @@ class TicTacToeGame:#(base.EnumFMDPIF):
         # step: int - the current step.
 
         #self._agents = {XAGENT: None, OAGENT: None} 
-        self._agent = 1
-        self._env = TicTacToeEnv()
+        self._agent_key = 0
+        self._agent = None 
         self._init_state = TicTacToeState()
         self._state = self._init_state
         self._history = []
         self._step = 0
         self._states = gen_state_space(False)
+        self._comp = -1
 
-        return
+    @property
+    def agent(self):
+        return self._agent_key, self._agent
+
+    def set_agent(self, key, agent):
+        self._agent_key = key
+        self._agent = agent
 
     @property
     def states(self):
@@ -74,28 +81,29 @@ class TicTacToeGame:#(base.EnumFMDPIF):
     def set_state(self, state):
         self._state = state
 
-    def is_terminal(self):
-        return self.state.is_terminal()
-
     def list_actions(self, state=None):
-        if state:
-            return self._get_actions(state)
 
-        return self._get_actions(self._state)
+        return self._list_actions(self._agent_key, state)
 
-    def _get_actions(self, state):
-        # TODO: Move this logic to TicTacToeEnv since that object is the object
-        # that knows the rules.
-        if self.agent != state.player:
-            return [TicTacToeAction(self.agent, -1, -1, True)]
+    def _list_actions(self, agent_key, state=None):
+        # lists the possible actions from the point of view of the agent
+        # 2 cases: if agent's turn or not
+        # if it is not the agent's turn return the null action
+        # else return an action object for each open square if the game isn't
+        # over, otherwise return the null action.
+        if state.player != agent_key:
+            return [TicTacToeAction(agent_key, None, True)]
 
-        if not state.winner is None:
-            return [TicTacToeAction(self.agent, -1, -1, True)]
+        if not state:
+            state = self.state
 
-        actions = [] 
-        for sq in state.list_empty_squares():
-            action = TicTacToeAction(self.agent, sq[0], sq[1])
-            actions.append(action)
+        # TODO: change tie from 0 to something else
+        if state.winner in (-1, 0, 1):
+            return [TicTacToeAction(agent_key, None, True)]
+
+        actions = []
+        for move in state.list_empty_squares():
+            actions.append(TicTacToeAction(agent_key, move))
 
         return actions
 
@@ -107,43 +115,45 @@ class TicTacToeGame:#(base.EnumFMDPIF):
         if state.is_terminal():
             return [(state, 0, 1)]
 
-        import pdb
-        pdb.set_trace()
         responses = []
-        if state.player == action.agent and state.winner is None:
-            # player's turn, game not over
+        # player's turn, game not over
+        if state.player == action._agent_key and state.winner is None:
             next_state = TicTacToeState()
             next_state.copy_other(state)
-            next_state.board[action.row][action.col] = action.agent
+            row = action._move[0]
+            col = action._move[1]
+            next_state.board[row][col] = action._agent_key
             next_state.calc_all_tots()
             next_state.calc_winner()
             next_state.flip_player()
             reward = 0
             prob = 1
             responses.append((next_state, reward, prob))
-        elif state.player == action.agent and not state.winner is None:
-            # player's turn, game is over
+        # player's turn, game is over
+        elif state.player == action._agent_key and not state.winner is None:
             next_state = TicTacToeState(True)
             reward = state.winner
             prob = 1
             responses.append((next_state, reward, prob))
-        elif state.player != action.agent and state.winner is None:
-            # environment's turn, game is not over
+        # environment's turn, game is not over
+        elif state.player != action._agent_key and state.winner is None:
             # TODO: move this to the enviroment object. For just a the random
             # environment or agent.
-            actions = self.list_actions(self, state)
+            actions = self._list_actions(state, self._comp)
             for action in actions:
                 next_state = TicTacToeState()
                 next_state.copy_other(state)
-                next_state.board[action.row][action.col] = state.player
+                row = action._move[0]
+                col = action._move[1]
+                next_state.board[row][col] = state.player
                 next_state.calc_all_tots()
                 next_state.calc_winner()
                 next_state.flip_player()
                 reward = 0
                 prob = 1 / len(actions)
                 responses.append((next_state, reward, prob))
+        # environment's turn, game is over
         else:
-            # environment's turn, game is over
             next_state = TicTacToeState(True)
             reward = state.winner
             prob = 1
@@ -151,58 +161,77 @@ class TicTacToeGame:#(base.EnumFMDPIF):
 
         return responses 
 
-    def next(self, action):
-        next_state, reward = self.env.next(self.state, action)
-        self._history.append((self.state, action, reward))
-        self.set_state(next_state)
+    # def is_terminal(self):
+        # return self.state.is_terminal()
 
-    @property
-    def env(self):
-        return self._env
+    # def _get_actions(self, state):
+        # # TODO: Move this logic to TicTacToeEnv since that object is the object
+        # # that knows the rules.
+        # if self.agent != state.player:
+            # return [TicTacToeAction(self.agent, -1, -1, True)]
 
-    def set_env(self, env):
-        self._env = env
+        # if not state.winner is None:
+            # return [TicTacToeAction(self.agent, -1, -1, True)]
+
+        # actions = [] 
+        # for sq in state.list_empty_squares():
+            # action = TicTacToeAction(self.agent, sq[0], sq[1])
+            # actions.append(action)
+
+        # return actions
+
+    # def next(self, action):
+        # next_state, reward = self.env.next(self.state, action)
+        # self._history.append((self.state, action, reward))
+        # self.set_state(next_state)
+
+    # @property
+    # def env(self):
+        # return self._env
+
+    # def set_env(self, env):
+        # self._env = env
 
     # deprecated
-    @property
-    def agent(self):
-        return self._agent
+    # @property
+    # def agent(self):
+        # return self._agent
 
-    def set_agent(self, agent):
-        self._agent = agent
+    # def set_agent(self, agent):
+        # self._agent = agent
 
-    def display(self):
-        print("Game Step: {}".format(self._step))
-        self._state.display()
+    # def display(self):
+        # print("Game Step: {}".format(self._step))
+        # self._state.display()
 
-        return
+        # return
 
-    def step(self):
-        pass
+    # def step(self):
+        # pass
     
-    def reset(self):
-        pass
+    # def reset(self):
+        # pass
 
-    @property
-    def history(self):
-        pass
+    # @property
+    # def history(self):
+        # pass
 
-    def run(self):
-        # for each agent in order do:
-        #    get the agent's action
-        #    do the environment
-        #    update the state and reward
-        #    record current state, action, next state and reward
-        # do environment
+    # def run(self):
+        # # for each agent in order do:
+        # #    get the agent's action
+        # #    do the environment
+        # #    update the state and reward
+        # #    record current state, action, next state and reward
+        # # do environment
 
-        self.display()
-        agent = self.agents[self.state.agent_key]
-        action = agent.get_action(self.state)
+        # self.display()
+        # agent = self.agents[self.state.agent_key]
+        # action = agent.get_action(self.state)
 
-        return action
+        # return action
 
 
-class TicTacToeEnv(fmdp.EnvIF):
+class TicTacToeEnv:#(base.EnvIF):
     """
     Implements an environment for tic tac toe.
 
@@ -225,11 +254,11 @@ class TicTacToeEnv(fmdp.EnvIF):
         winner = self._is_game_over(state)
         if winner is not None:
             if winner == stage.agent_key:
-                return fmdp.TerminalState(state.agent_key), WIN
+                return base.TerminalState(state.agent_key), WIN
             elif winner == TIE:
-                return fmdp.TerminalState(state.agent_key), TIE
+                return base.TerminalState(state.agent_key), TIE
             else:
-                return fmdp.TerminalState(state.agent_key), LOSS
+                return base.TerminalState(state.agent_key), LOSS
 
         next_state = state.copy()
         next_state.update(action)
@@ -548,35 +577,20 @@ class TicTacToeAction:#(base.EnumActionIF):
     This class defines an action in tic tac toe.
     """
     
-    def __init__(self, agent, row, col, null=False):
+    def __init__(self, agent_key, move, null=False):
         """
         Initializes a tic tac toe action.
-
-        Params:
-            agent: int|str - the key of the agent who chose the action.
-            row: int - row number
-            col: int - column number
         """
+        # agent_key: int - 1 for x, -1 for o.
+        # move: tuple - (row, col)
+        # null: bool - if the null action, i.e. no action
 
-        self._agent = agent
-        self._row = row
-        self._col = col
+        self._agent_key = agent_key
+        self._move = move 
         self._null = null
 
-    @property
-    def agent(self):
-        return self._agent
-
-    @property
-    def row(self):
-        return self._row
-
-    @property
-    def col(self):
-        return self._col
-
     def display(self):
-        print("row: {} col: {}".format(self._row, self._col))
+        print("Move is: {}".format(self._move))
 
     def is_null(self):
         return self._null

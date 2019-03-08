@@ -44,18 +44,6 @@ class FMDPIF(abc.ABC):
     Declares the methods a finite Markov decision process (FMDP) implements.
     """
 
-    # @property
-    # @abc.abstractmethod
-    # def agent(self):
-        # """
-        # The agent configured for the FMDP.
-
-        # Returns:
-            # AgentIF - the agent configured for the FMDP.
-        # """
-
-
-    # Scratch space
     @property
     @abc.abstractmethod
     def state(self):
@@ -76,6 +64,30 @@ class FMDPIF(abc.ABC):
 
         pass
 
+    @abc.abstractmethod
+    def list_actions(self, state):
+        """
+        Lists the possible actions from a given state.
+
+        Returns:
+            list[ActionIF] - a list where each element is a possible action.
+        """
+
+        pass
+
+    @abc.abstractmethod
+    def list_responses(self, state, action):
+        """
+        Lists the possible responses for an action from a given state.
+
+        Returns:
+            list[(StateIF, float, float)] - a list where each element is a
+            tuple containing a possible next state, a possible reward and the
+            corresponding probability.
+        """
+
+        pass
+
     # @abc.abstractmethod
     # def is_terminal(self):
         # """
@@ -84,6 +96,17 @@ class FMDPIF(abc.ABC):
 
         # pass
 
+    # @property
+    # @abc.abstractmethod
+    # def agent(self):
+        # """
+        # The agent configured for the FMDP.
+
+        # Returns:
+            # AgentIF - the agent configured for the FMDP.
+        # """
+
+    # Scratch space
     # @abc.abstractmethod
     # def get_actions(self, state=None):
         # """
@@ -239,18 +262,6 @@ class EnumFMDPIF(FMDPIF):
 
         pass
 
-    @abc.abstractmethod
-    def list_responses(self, state, action):
-        """
-        Lists the possible responses for an action from a given state.
-
-        Returns:
-            list - a list where each element is a list containing a possible
-            next state, a possible reward and the corresponding probability.
-        """
-
-        pass
-
 
 class EnvIF(abc.ABC):
     """
@@ -258,7 +269,7 @@ class EnvIF(abc.ABC):
     """
 
     @abc.abstractmethod
-    def next(self, state, action):
+    def respond(self, state, action):
         """
         Returns the next state and a reward.
 
@@ -271,6 +282,30 @@ class EnvIF(abc.ABC):
 
         Returns:
             StateIF, float - the next state and reward tuple.
+        """
+
+        pass
+
+    @abc.abstractmethod
+    def list_actions(self, state):
+        """
+        Lists the possible actions from a given state.
+
+        Returns:
+            list[ActionIF] - a list where each element is a possible action.
+        """
+
+        pass
+
+    @abc.abstractmethod
+    def list_responses(self, state, action):
+        """
+        Lists the possible responses for an action from a given state.
+
+        Returns:
+            list[(StateIF, float, float)] - a list where each element is a
+            tuple containing a possible next state, a possible reward and the
+            corresponding probability.
         """
 
         pass
@@ -314,24 +349,14 @@ class ActionIF(abc.ABC):
     """
     Declares the methods that an action object implements.
     """
-    pass
 
-    @property
     @abc.abstractmethod
-    def agent(self):
+    def display(self):
         """
-        Returns the agent who chose the action.
+        Displays the action as a printable string.
         """
 
         pass
-
-    # @abc.abstractmethod
-    # def display(self):
-        # """
-        # Displays the action as a printable string.
-        # """
-
-        # pass
 
     # @abc.abstractmethod
     # def is_null(self):
@@ -534,23 +559,8 @@ class PolicyIF(abc.ABC):
             fmdp: FMDPIF - the FMDP from which the state object is.
 
         Returns:
-            list[list[ActionIF, float]] - a list where each element is a list
-            containing an action and its corresponding nonzero probability.
-        """
-
-        pass
-
-    #@abc.abstractmethod
-    def lookup_state_value(self, state, fmdp):
-        """
-        Returns the value of the state under the policy.
-
-        Params:
-            state: StateIF - a state object.
-            fmdp: FMDPIF - the FMDP from which the state object comes.
-
-        Returns:
-            float - the numeric value of the state under the policy.
+            list[(ActionIF, float)] - a list where each element is an action,
+            probability pair for those actions with nonzero probability.
         """
 
         pass
@@ -613,6 +623,22 @@ class GreedyPolicy(PolicyIF):
                 value = prob*(reward + self.discount)
                 #values.append(
 
+    #@abc.abstractmethod
+    def lookup_state_value(self, state, fmdp):
+        """
+        Returns the value of the state under the policy.
+
+        Params:
+            state: StateIF - a state object.
+            fmdp: FMDPIF - the FMDP from which the state object comes.
+
+        Returns:
+            float - the numeric value of the state under the policy.
+        """
+
+        pass
+
+
 
 class LookupPolicy(PolicyIF):
     """
@@ -628,10 +654,12 @@ class LookupPolicy(PolicyIF):
         Initializes the lookup policy.
 
         Params:
-            state_actions: list - a list of tuples of state, action pairs.
+            state_actions: list[StateIF, list[(ActionIF, float)] - a list where
+            the first element is a state and the second element is a list of
+            all the possible actions with nonzero probability.
         """
 
-        self._state_actions = state_actions 
+        self._state_actions = state_actions
         self._discount = discount
 
     @property
@@ -642,6 +670,6 @@ class LookupPolicy(PolicyIF):
         self._discount = discount
 
     def list_actions(self, state, fmdp):
-        for state_action in state_actions:
+        for state_action in self._state_actions:
             if state == state_action[0]:
-                return [[state_action[1], 1]]
+                return state_action[1]
