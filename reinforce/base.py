@@ -65,9 +65,13 @@ class FMDPIF(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def list_actions(self, state):
+    def list_actions(self, state=None):
         """
         Lists the possible actions from a given state.
+
+        Params:
+            state: StateIF - a state object, if None then the current state is
+                used.
 
         Returns:
             list[ActionIF] - a list where each element is a possible action.
@@ -76,14 +80,38 @@ class FMDPIF(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def list_responses(self, state, action):
+    def list_responses(self, action, state=None):
         """
         Lists the possible responses for an action from a given state.
+
+        Params:
+            action: ActionIF - the chosen action.
+            state: StateIF - a state object, if None then the current state is
+                used.
 
         Returns:
             list[(StateIF, float, float)] - a list where each element is a
             tuple containing a possible next state, a possible reward and the
             corresponding probability.
+        """
+
+        pass
+
+    @abc.abstractmethod
+    def respond(self, action, state=None):
+        """
+        Returns a single next state and reward.
+
+        This method takes a state and action and then according to its dynamics
+        p(s',r|s,a), the FMDP returns a next state and reward.
+
+        Params:
+            action: ActionIF - the chosen action.
+            state: StateIF - a state object, if None then the current state is
+                used.
+
+        Returns:
+            [StateIF, float] - a list with the next state and reward.
         """
 
         pass
@@ -415,6 +443,25 @@ class AgentIF(abc.ABC):
 
         pass
 
+    @property
+    @abc.abstractmethod
+    def fmdp(self):
+        """
+        Returns the FMDP that the agent is for.
+        """
+        
+        pass
+
+    @abc.abstractmethod
+    def set_fmdp(self, fmdp):
+        """
+        Sets the FMDP that the agent is for.
+
+        Params:
+            fmdp: FMDPIF - the FMDP to use.
+        """
+        
+        pass
 
     @property
     @abc.abstractmethod
@@ -435,55 +482,21 @@ class AgentIF(abc.ABC):
         """
         
         pass
-#
 
-    # scratch space
-    #@property
-    #@abc.abstractmethod
-    #def fmdp(self):
-        #"""
-        #Returns the FMDP that the agent is for.
-        #"""
-        #
-        #pass
-#
-    #@abc.abstractmethod
-    #def set_fmdp(self, fmdp):
-        #"""
-        #Sets the FMDP that the agent is for.
-#
-        #Params:
-            #fmdp: FMDPIF - the FMDP to use.
-        #"""
-        #
-        #pass
-#
+    @abc.abstractmethod
+    def list_actions(self, state):
+        """
+        Lists the possible actions from a given state with nonzero probability.
 
-    #@abc.abstractmethod
-    #def get_action(self, state):
-        #"""
-        #Selects an action from the given state based on the agent's policy.
-#
-        #Params:
-            #state: StateIF - the state from which to choose an action.
-#
-        #Returns:
-            #ActionIF - the agent's selected action.
-        #"""
-#
-        #pass
-#
-    #@abc.abstractmethod
-    #def run(self):
-        #"""
-        #Runs the agent.
-#
-        #This method starts the iterative sequence of the agent taking an action
-        #followed by the environment responding with a new state and reward.
-        #"""
-#
-        #pass
+        Params:
+            state: StateIF - a state object.
 
+        Returns:
+            [[ActionIF, float], ...] - a list where each element is an action,
+            probability pair for those actions with nonzero probability.
+        """
+
+        pass
 
 class Agent(AgentIF):
     """

@@ -1,3 +1,4 @@
+# TODO: Update documentation to be Algortihm or Learning Module
 """
 Dynamic Programming Module.
 
@@ -100,6 +101,17 @@ def lookup_state_value(state, state_values):
             return state_value[1]
 
 
+def eval_policy_mc(policy, fmdp, max_episodes=500):
+    """
+    Evaluates a policy for a FMDP using first-visit Monte Carlo prediction.
+    
+    Params:
+        policy: PolicyIF - the policy to evaluate.
+        fmdp: FMDPIF - a FMDP.
+        max_episodes: int - maximum number of episodes to do.
+    """
+
+    pass
 # def eval_policy(policy, fmdp, delta=10**-6, iters=500):
     # """
     # Evaluates a policy using iterative policy evaluation.
