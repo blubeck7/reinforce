@@ -37,6 +37,7 @@ Exceptions:
 
 
 import abc
+import random
 
 
 class FMDPIF(abc.ABC):
@@ -445,22 +446,32 @@ class AgentIF(abc.ABC):
 
     @property
     @abc.abstractmethod
-    def fmdp(self):
-        """
-        Returns the FMDP that the agent is for.
-        """
-        
+    def agent_key(self):
         pass
 
     @abc.abstractmethod
-    def set_fmdp(self, fmdp):
-        """
-        Sets the FMDP that the agent is for.
+    def set_agent_key(self, key):
+        pass
 
-        Params:
-            fmdp: FMDPIF - the FMDP to use.
+    @property
+    @abc.abstractmethod
+    def discount(self):
+        """
+        Returns the agent's discount factor.
         """
         
+        pass
+    
+    @abc.abstractmethod
+    def set_discount(self, discount):
+        """
+        Sets the agent's discount factor.
+
+        Params
+            discount: float - a number between 0 and 1 that is used to discount
+                future rewards.
+        """
+
         pass
 
     @property
@@ -484,27 +495,70 @@ class AgentIF(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def list_actions(self, state):
+    def list_actions(self, state, fmdp):
         """
-        Lists the possible actions from a given state with nonzero probability.
+        Lists the possible actions with nonzero probability from a given state.
 
         Params:
             state: StateIF - a state object.
+            fmdp: FMDPIF - the FMDP from which the state object is.
 
         Returns:
-            [[ActionIF, float], ...] - a list where each element is an action,
+            list[(ActionIF, float)] - a list where each element is an action,
             probability pair for those actions with nonzero probability.
         """
 
         pass
 
-class Agent(AgentIF):
+    @abc.abstractmethod
+    def select(self, state, fmdp):
+        """
+        Selects a possible action from a given state.
+
+        Params:
+            state: StateIF - a state object.
+            fmdp: FMDPIF - the FMDP from which the state object is.
+
+        Returns:
+            ActionIF - the selected action.
+        """
+
+        pass
+
+
+class PolicyIF(abc.ABC):
+    """
+    Declares the methods a policy object implements.
+
+    A policy is a function that assigns a state to a conditional probability
+    function over the possible actions from the state.
+    """
+
+    @abc.abstractmethod
+    def list_actions(self, discount, state, fmdp):
+        """
+        Lists the possible actions with nonzero probability from a given state.
+
+        Params:
+            discount: float - a number between 0 and 1 that is used to discount
+                future rewards.
+            state: StateIF - a state object.
+            fmdp: FMDPIF - the FMDP from which the state object is.
+
+        Returns:
+            list[(ActionIF, float)] - a list where each element is an action,
+            probability pair for those actions with nonzero probability.
+        """
+
+        pass
+
+
+class Agent:#(AgentIF):
     """
     Defines an agent.
 
     An agent is a thing capable of taking actions. It does so acccording to a
-    policy. Three important policies independent of the actual FMDP are the
-    random policy, the greedy policy and the optimal policy.
+    policy.
     """
 
     def __init__(self, name):
@@ -521,6 +575,7 @@ class Agent(AgentIF):
 
         self._name = name
         self._fmdp = None
+        self._discount = None
         self._policy = None
         self._act_env = None
         self._est_env = None
@@ -530,6 +585,13 @@ class Agent(AgentIF):
     @property
     def name(self):
         return self._name
+
+    @property
+    def discount(self):
+        return self._discount
+
+    def set_discount(self, discount):
+        self._discount = discount
 
     @property
     def fmdp(self):
@@ -545,55 +607,48 @@ class Agent(AgentIF):
     def set_policy(self, policy):
         self._policy = policy
 
-    def get_action(self, state):
-        return self._policy.get_action(state, self.fmdp)
+    def select(self, state, fmdp):
+        action_probs = self._policy.list_actions(state, fmdp, self.discount)
+        rand = random.random()
+        cum_prob = 0
+        for action, prob in action_probs:
+            pass
 
-    def run(self):
-        while not self.fmdp.is_terminal():
-            action = self.get_action(self.fmdp.state)
-            self.fmdp.next(action)
 
 
-class PolicyIF(abc.ABC):
+class LookupPolicy(PolicyIF):
     """
-    Declares the methods a policy object implements.
+    Defines a lookup policy.
 
-    A policy is a function that assigns a state to a conditional probability
-    function over the possible actions from the state.
+    A lookup policy is a policy that uses a lookup table to determine the
+    action to take from a state. The lookup up table is an exhaustive
+    enumeration of all the possible states.
     """
 
-    @abc.abstractmethod
-    def list_actions(self, state, fmdp):
+    def __init__(self, state_actions, discount=1):
         """
-        Lists the possible actions from a given state with nonzero probability.
+        Initializes the lookup policy.
 
         Params:
-            state: StateIF - a state object.
-            fmdp: FMDPIF - the FMDP from which the state object is.
-
-        Returns:
-            list[(ActionIF, float)] - a list where each element is an action,
-            probability pair for those actions with nonzero probability.
+            state_actions: list[StateIF, list[(ActionIF, float)] - a list where
+            the first element is a state and the second element is a list of
+            all the possible actions with nonzero probability.
         """
 
-        pass
+        self._state_actions = state_actions
+        self._discount = discount
 
     @property
-    @abc.abstractmethod
     def discount(self):
-        """
-        Returns the policy's discount factor.
-        """
-        
-        pass
-    
-    @abc.abstractmethod
-    def set_discount(self):
-        """
-        Sets the policy's discount factor.
-        """
+        return self._discount
 
-        pass
+    def set_discount(self, discount):
+        self._discount = discount
+
+    def list_actions(self, state, fmdp):
+        for state_action in self._state_actions:
+            if state == state_action[0]:
+                return state_action[1]
 
 
 class GreedyPolicy(PolicyIF):
@@ -651,38 +706,3 @@ class GreedyPolicy(PolicyIF):
 
         pass
 
-
-
-class LookupPolicy(PolicyIF):
-    """
-    Defines a lookup policy.
-
-    A lookup policy is a policy that uses a lookup table to determine the
-    action to take from a state. The lookup up table is an exhaustive
-    enumeration of all the possible states.
-    """
-
-    def __init__(self, state_actions, discount=1):
-        """
-        Initializes the lookup policy.
-
-        Params:
-            state_actions: list[StateIF, list[(ActionIF, float)] - a list where
-            the first element is a state and the second element is a list of
-            all the possible actions with nonzero probability.
-        """
-
-        self._state_actions = state_actions
-        self._discount = discount
-
-    @property
-    def discount(self):
-        return self._discount
-
-    def set_discount(self, discount):
-        self._discount = discount
-
-    def list_actions(self, state, fmdp):
-        for state_action in self._state_actions:
-            if state == state_action[0]:
-                return state_action[1]

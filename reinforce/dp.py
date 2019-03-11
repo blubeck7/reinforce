@@ -40,6 +40,7 @@ def value_iter(fmdp, discount=1, delta=10**-6, iters=500):
     while True:
         diff = 0
         n += 1
+        print(n)
         for state_value_pair in state_value_pairs:
             cur_state_value = state_value_pair[1]
             _, state_value_pair[1] = calc_best_action(
@@ -87,7 +88,7 @@ def calc_action_value(state, action, state_values, discount, fmdp):
     """
 
     new_value = 0 
-    responses = fmdp.list_responses(state, action)
+    responses = fmdp.list_responses(action, state)
     for next_state, reward, prob in responses:
         value = lookup_state_value(next_state, state_values) 
         new_value += prob * (reward + discount * value)

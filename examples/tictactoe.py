@@ -36,9 +36,10 @@ TIE = 0
 LOSS = -1
 
 
-class TicTacToeGame(base.EnumFMDPIF):
+class TicTacToeAllFMDP(base.EnumFMDPIF):
     """
-    This class implements the game tic tac toe as an enumerable FMDP.
+    This class implements the game tic tac toe as an enumerable FMDP with all
+    the states for X's and O's and the corresponding game logic.
     """
 
     def __init__(self):
@@ -47,8 +48,8 @@ class TicTacToeGame(base.EnumFMDPIF):
         """
         # agent_key: int - 1 for x's and -1 for o's
         # agent: AgentIF - the main agent
-        # comp_key: int - 1 for x's and -1 for o's
-        # comp: AgentIF - the environment agent
+        # comp_key: int - 1 for x's and -1 for o's, opposite of agent key
+        # comp: AgentIF - the environment agent, opposite of agent
         # state: TicTacToeState - the current state
 
         self._agent_key = 0
@@ -56,11 +57,12 @@ class TicTacToeGame(base.EnumFMDPIF):
         self._comp_key = 0
         self._comp = None 
 
-        self._init_state = TicTacToeState()
-        self._state = self._init_state
+        self._states = gen_state_space(False)
+        # add the terminal state as the last state
+        self._states.append(TicTacToeState(True))
+        self._state = self._states[0] 
         self._history = []
         self._step = 0
-        self._states = gen_state_space(False)
 
     @property
     def agent(self):
@@ -89,57 +91,69 @@ class TicTacToeGame(base.EnumFMDPIF):
     def set_state(self, state):
         self._state = state
 
-    def list_actions(self, state=None):
-        # This method is always from the point of view of the agent.
-        assert (state.player == self.agent[0] or
-                state.winner in (-1, 0, 1) or
-                state.is_terminal())
-
+    def list_actions(self, state=None, agent_key=None):
         if not state:
             state = self.state
 
-        if state.is_terminal() or state.winner in (-1, 0, 1):
-            return [TicTacToeAction(null=True)]
+        if not agent_key:
+            agent_key = self.agent[0]
+
+        if (state.player != agent_key or state.is_terminal() or
+            state.winner in (-1, 0, 1)):
+            return [TicTacToeAction(agent_key, None, True)]
 
         actions = []
         for move in state.list_empty_squares():
-            actions.append(TicTacToeAction(move=move))
+            actions.append(TicTacToeAction(agent_key, move, False))
 
         return actions
 
     def list_responses(self, action, state=None):
-        # This method is always from the point of view of the environment.
-        assert (state.player != self.agent[0] or
-                state.winner in (-1, 0, 1) or
-                state.is_terminal())
-
-        # The rules are: 1. If the state is the terminal state or the state is
-        # that the game is over, then transition to the terminal state and give
-        # a reward of 0. 2. If the state is anything else, determine the next
-        # state and reward.
+        if not state:
+            state = self.state
 
         if state.is_terminal():
             return [[state, 0, 1]]
         
         if state.winner in (-1, 0, 1):
-            next_state = TicTacToeState.from_action(state, action, True)
+            terminal_state = TicTacToeState.from_action(state, action, True)
+            return [[terminal_state, state.winner * action.agent_key, 1]]
+
+        if state.player == action.agent_key:
+            next_state = TicTacToeState.from_action(state, action)
             return [[next_state, 0, 1]]
 
-        comp_state = TicTacToeState.from_action(state, action)
-        action_probs = self._comp.list_actions(state)
-        
-        # for each computer action generate a next state, reward and prob
+        # TODO: make this so it works with both x and o agents
+        # It is the computer's turn. For each computer action, generate the
+        # next state, reward and probability tuple.
         responses = []
-        for action_prob in action_probs:
-            next_state = TicTacToeState.from_action(comp_state, action_prob[0])
-            reward = next_state.player * next_state.winner
-            prob = action_prob[1]
-            responses.append([next_state, reward, prob])
+        for action_prob in self._comp.list_actions(state, self):
+            next_state = TicTacToeState.from_action(state, action_prob[0])
+            responses.append([next_state, 0, action_prob[1]])
 
         return responses 
 
     def respond(self, action, state=None):
         pass
+
+
+    def run(self):
+        if self.agent[0] == 1:
+            player1 = self.agent[1]
+            player2 = self.comp[1]
+        else:
+            player1 = self.comp[1]
+            player2 = self.agent[1]
+
+        print("{} is X's and {} is O's".format(player1.name, player2.name))
+        self.state.display()
+        action = player1.select
+
+
+
+
+
+
 
 
 
@@ -231,7 +245,6 @@ class TicTacToeState:#(base.EnumStateIF):
             full: bool - if the board is full or not.
             winner: int - 1 if X, -1 if O and 0 if a tie.
         """
-        self._id = None
         self.player = 1
         self.board = [[0, 0, 0], [0, 0, 0], [0, 0, 0]]
         self.row_tots = [0, 0, 0]
@@ -261,10 +274,6 @@ class TicTacToeState:#(base.EnumStateIF):
 
         return next_state
 
-    @property
-    def id(self):
-        return self._id
-
     def __eq__(self, other):
         eq = False
         if isinstance(other, type(self)):
@@ -293,6 +302,10 @@ class TicTacToeState:#(base.EnumStateIF):
         return eq
 
     def display(self):
+        if self.is_terminal():
+            print("Terminal State")
+            return
+
         print("Board")
         print(" ", end="")
         for row in range(NROWS):
@@ -630,3 +643,83 @@ def _create_state(x_sqs, o_sqs):
         state.player = -1
 
     return state
+
+
+class TicTacToeAgent:#(base.AgentIF):
+
+    def __init__(self, name):
+        self._name = name
+        self._agent_key = None
+        self._discount = None
+        self._policy = None
+        self._act_env = None
+        self._est_env = None
+
+        return
+
+    @property
+    def name(self):
+        return self._name
+
+    @property
+    def agent_key(self):
+        return self._agent_key
+
+    def set_agent_key(self, key):
+        self._agent_key = key
+
+    @property
+    def discount(self):
+        return self._discount
+
+    def set_discount(self, discount):
+        self._discount = discount
+
+    @property
+    def policy(self):
+        return self._policy
+
+    def set_policy(self, policy):
+        self._policy = policy
+
+    def select(self, state, fmdp):
+        action_probs = self.list_actions(state, fmdp)
+        rand = random.random()
+        cum_prob = 0
+        for action, prob in action_probs:
+            pass
+
+    def list_actions(self, state, fmdp):
+        action_probs = self._policy.list_actions(
+            self.agent_key, self.discount, state, fmdp)
+
+        return action_probs
+
+
+class RandomPolicy:#base.PolicyIF
+
+    def __init__(self, seed=None):
+        random.seed(seed) 
+
+    def list_actions(self, agent_key, discount, state, fmdp):
+        action_probs = []
+        actions = fmdp.list_actions(state, agent_key)
+        for action in actions:
+            action_probs.append([action, 1 / len(actions)])
+
+        return action_probs
+
+
+if __name__ == "__main__":
+    pass
+    #agent = base.Agent("Human") 
+    #agent.set_discount(1)
+    #comp = base.Agent("Computer")
+    #comp.set_discount(1)
+    #fmdp = TicTacToeGame()
+    #fmdp.set_agent(1, agent)
+    #fmdp.set_comp(-1, comp)
+    #fmdp.run()
+
+
+
