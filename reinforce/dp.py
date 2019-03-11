@@ -12,6 +12,9 @@ Exceptions:
 """
 
 
+_DEBUG = True
+
+
 from reinforce import base
 
 
@@ -82,7 +85,7 @@ def calc_best_action(state, state_value_pairs, discount, fmdp):
     return best_action, best_value
 
 
-def calc_action_value(state, action, state_values, discount, fmdp):
+def calc_action_value(state, action, state_value_pairs, discount, fmdp):
     """
     Calculates the one-step ahead value of an action from a given state.
     """
@@ -90,14 +93,14 @@ def calc_action_value(state, action, state_values, discount, fmdp):
     new_value = 0 
     responses = fmdp.list_responses(action, state)
     for next_state, reward, prob in responses:
-        value = lookup_state_value(next_state, state_values) 
+        value = lookup_state_value(next_state, state_value_pairs) 
         new_value += prob * (reward + discount * value)
 
     return new_value
 
 
-def lookup_state_value(state, state_values):
-    for state_value in state_values:
+def lookup_state_value(state, state_value_pairs):
+    for state_value in state_value_pairs:
         if state == state_value[0]:
             return state_value[1]
 

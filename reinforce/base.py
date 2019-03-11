@@ -534,14 +534,21 @@ class PolicyIF(abc.ABC):
     function over the possible actions from the state.
     """
 
+    @property
+    @abc.abstractmethod
+    def discount(self):
+        """
+        Returns the discount factor for the policy.
+        """
+        
+        pass
+    
     @abc.abstractmethod
     def list_actions(self, discount, state, fmdp):
         """
         Lists the possible actions with nonzero probability from a given state.
 
         Params:
-            discount: float - a number between 0 and 1 that is used to discount
-                future rewards.
             state: StateIF - a state object.
             fmdp: FMDPIF - the FMDP from which the state object is.
 
@@ -641,9 +648,6 @@ class LookupPolicy(PolicyIF):
     @property
     def discount(self):
         return self._discount
-
-    def set_discount(self, discount):
-        self._discount = discount
 
     def list_actions(self, state, fmdp):
         for state_action in self._state_actions:

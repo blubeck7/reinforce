@@ -123,9 +123,6 @@ class TicTacToeAllFMDP(base.EnumFMDPIF):
             next_state = TicTacToeState.from_action(state, action)
             return [[next_state, 0, 1]]
 
-        # TODO: make this so it works with both x and o agents
-        # It is the computer's turn. For each computer action, generate the
-        # next state, reward and probability tuple.
         responses = []
         for action_prob in self._comp.list_actions(state, self):
             next_state = TicTacToeState.from_action(state, action_prob[0])
@@ -148,74 +145,6 @@ class TicTacToeAllFMDP(base.EnumFMDPIF):
         print("{} is X's and {} is O's".format(player1.name, player2.name))
         self.state.display()
         action = player1.select
-
-
-
-
-
-
-
-
-
-
-class TicTacToeEnv:#(base.EnvIF):
-    """
-    Implements an environment for tic tac toe.
-
-    The environemnt is the object that knows the rules of tic tac toe.
-    """
-
-    def __init__(self, agent_key, comp):
-        """
-        Initializes the environment object.
-
-        Params:
-            agent_key: int - 1 for x or -1 for o.
-            comp: AgentIF - the computer agent.
-        """
-        self._agent_key = agent_key
-        self._comp = comp
-
-        return
-
-    def respond(state, action):
-        pass
-
-    def list_actions(self, state):
-        # This method is always from the point of view of the agent.
-        assert state.player == self.agent_key or state.winner in (-1, 0, 1)
-
-        if state.is_terminal() or state.winner in (-1, 0, 1):
-            return [TicTacToeAction(null=True)]
-
-        actions = []
-        for move in state.list_empty_squares():
-            actions.append(TicTacToeAction(move=move))
-
-        return actions
-
-    def list_responses(self, state, action):
-        # This method is always from the point of view of the environment.
-        assert state.player != self._agent_key or state.winner in (-1, 0, 1)
-
-        # The rules are: 1. If the state is the terminal state or the state is
-        # that the game is over, then transition to the terminal state and give
-        # a reward of 0. 2. If the state is anything else, determine the next
-        # state and reward.
-
-        if state.is_terminal():
-            return [(state, 0, 1)]
-        
-        if state.winner in (-1, 0, 1):
-            next_state = TicTacToeState.from_action(state, action, True)
-            return [(next_state, 0, 1)]
-
-        comp_state = TicTacToeState.from_action(state, action)
-
-        return responses 
-
-
-
 
 
 class TicTacToeState:#(base.EnumStateIF):
@@ -553,7 +482,8 @@ def _gen_state_space(moves):
         return [_create_state((), ())]
 
     all_states = _gen_all_states(moves)
-    if moves // 2 == 0:
+
+    if moves % 2 == 0:
         illegal_states = _gen_x_winning_states(moves)
     else:
         illegal_states = _gen_o_winning_states(moves)
@@ -711,7 +641,15 @@ class RandomPolicy:#base.PolicyIF
 
 
 if __name__ == "__main__":
-    pass
+    from reinforce import dp
+    fmdp = TicTacToeAllFMDP()
+    fmdp.set_agent(1, "X")
+    comp = TicTacToeAgent("Computer")
+    comp.set_agent_key(-1)
+    comp.set_discount(1)
+    comp.set_policy(RandomPolicy())
+    fmdp.set_comp(-1, comp)
+    opt_pol = dp.value_iter(fmdp, iters=100)
     #agent = base.Agent("Human") 
     #agent.set_discount(1)
     #comp = base.Agent("Computer")
