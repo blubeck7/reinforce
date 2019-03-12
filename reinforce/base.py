@@ -44,6 +44,29 @@ class FMDPIF(abc.ABC):
     """
     Declares the methods a finite Markov decision process (FMDP) implements.
     """
+    @property
+    @abc.abstractmethod
+    def agent(self):
+        """
+        Returns the agent for the FMDP and the agent's key.
+
+        Returns:
+            (AgentIF, int) - a tuple containing the agent and its key. 
+        """
+
+        pass
+
+    @abc.abstractmethod
+    def set_agent(self, key, agent):
+        """
+        Sets the agent for the FMDP.
+
+        Params:
+            key: int - the agent's identifier for the FMDP.
+            agent: AgentIF - an agent object to use.
+        """
+
+        pass
 
     @property
     @abc.abstractmethod
@@ -117,6 +140,34 @@ class FMDPIF(abc.ABC):
 
         pass
 
+    @abc.abstractmethod
+    def run(self):
+        """
+        Runs the FMDP. 
+        
+        This method runs an episode of the FMDP. It saves the sequence of
+        state, action and reward tuples as the FMDP runs.
+        """
+
+        pass
+
+    @property
+    @abc.abstractmethod
+    def history(self):
+        """
+        Returns the history of the FMDP's states, actions and rewards for the
+        latest run.
+
+        Returns:
+            list - a list of tuples. Each tuple has three elements. The first
+                element is the state, the second element is the action and the
+                third element is the reward. The tuples are in order of the
+                time they were encountered from earliest to latest.
+        """
+
+        pass
+
+
     # @abc.abstractmethod
     # def is_terminal(self):
         # """
@@ -124,16 +175,6 @@ class FMDPIF(abc.ABC):
         # """
 
         # pass
-
-    # @property
-    # @abc.abstractmethod
-    # def agent(self):
-        # """
-        # The agent configured for the FMDP.
-
-        # Returns:
-            # AgentIF - the agent configured for the FMDP.
-        # """
 
     # Scratch space
     # @abc.abstractmethod
@@ -185,21 +226,6 @@ class FMDPIF(abc.ABC):
 
         # Params:
             # env: EnvIF - a environment object. 
-        # """
-
-        # pass
-
-    # @property
-    # @abc.abstractmethod
-    # def history(self):
-        # """
-        # Returns the history of the FMDP's states, actions and rewards.
-
-        # Returns:
-            # list - a list of tuples. Each tuple has three elements. The first
-                # element is the state, the second element is the action and the
-                # third element is the reward. The tuples are in order of the
-                # time they were encountered from earliest to latest.
         # """
 
         # pass
@@ -287,54 +313,6 @@ class EnumFMDPIF(FMDPIF):
     def states(self):
         """
         Returns a list of all the possible states including the terminal state.
-        """
-
-        pass
-
-
-class EnvIF(abc.ABC):
-    """
-    Declares the methods that an environment object implements.
-    """
-
-    @abc.abstractmethod
-    def respond(self, state, action):
-        """
-        Returns the next state and a reward.
-
-        This method takes a state and action and then according to its dynamics
-        p(s',r|s,a), the environment returns the next state and a reward.
-
-        Params:
-            state: StateIF - the current state.
-            action: ActionIF - the chosen action.
-
-        Returns:
-            StateIF, float - the next state and reward tuple.
-        """
-
-        pass
-
-    @abc.abstractmethod
-    def list_actions(self, state):
-        """
-        Lists the possible actions from a given state.
-
-        Returns:
-            list[ActionIF] - a list where each element is a possible action.
-        """
-
-        pass
-
-    @abc.abstractmethod
-    def list_responses(self, state, action):
-        """
-        Lists the possible responses for an action from a given state.
-
-        Returns:
-            list[(StateIF, float, float)] - a list where each element is a
-            tuple containing a possible next state, a possible reward and the
-            corresponding probability.
         """
 
         pass
@@ -447,29 +425,19 @@ class AgentIF(abc.ABC):
     @property
     @abc.abstractmethod
     def agent_key(self):
+        """
+        Returns the agent's key.
+        """
+
         pass
 
     @abc.abstractmethod
     def set_agent_key(self, key):
-        pass
+        """
+        Sets the agent's key.
 
-    @property
-    @abc.abstractmethod
-    def discount(self):
-        """
-        Returns the agent's discount factor.
-        """
-        
-        pass
-    
-    @abc.abstractmethod
-    def set_discount(self, discount):
-        """
-        Sets the agent's discount factor.
-
-        Params
-            discount: float - a number between 0 and 1 that is used to discount
-                future rewards.
+        Params:
+            key: int - the agent's identifier for the FMDP.
         """
 
         pass
@@ -539,6 +507,10 @@ class PolicyIF(abc.ABC):
     def discount(self):
         """
         Returns the discount factor for the policy.
+
+        The discount factor is any real number between 0 and 1. For continual
+        FMDP that can possibly never terminate, the discount factor must be
+        strictly less than 1.
         """
         
         pass
@@ -653,60 +625,3 @@ class LookupPolicy(PolicyIF):
         for state_action in self._state_actions:
             if state == state_action[0]:
                 return state_action[1]
-
-
-class GreedyPolicy(PolicyIF):
-    """
-    Sets the greedy policy.
-
-    The greedy policy is the policy that selects the action that maximizes
-    the expected value of the sum of the next reward and the value of the
-    next state based on an existing policy.
-    """
-
-    def __init__(self, policy, discount=1):
-        """
-        Initializes the greedy policy.
-
-        Params:
-            policy: PolicyIF - an existing policy.
-            discount: float - the discount factor to use. For episodic tasks,
-                the discount factor can be 1. For indefinite tasks, the
-                discount factor must be strictly less than 1.
-        """
-            
-        self._discount = discount
-        self._policy = policy
-
-    @property
-    def discount(self):
-        return self._discount
-
-    def set_discount(self, discount):
-        self._discount = discount
-
-    def select_action(self, state, fmdp):
-        values = []
-        actions = fmdp.list_actions(state)
-        for action in actions:
-            responses = fmdp.list_responses(action)
-            for response in responses:
-                next_state, reward, prob = response
-                value = prob*(reward + self.discount)
-                #values.append(
-
-    #@abc.abstractmethod
-    def lookup_state_value(self, state, fmdp):
-        """
-        Returns the value of the state under the policy.
-
-        Params:
-            state: StateIF - a state object.
-            fmdp: FMDPIF - the FMDP from which the state object comes.
-
-        Returns:
-            float - the numeric value of the state under the policy.
-        """
-
-        pass
-
