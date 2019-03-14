@@ -89,11 +89,13 @@ class FMDPIF(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def list_actions(self, state=None):
+    def list_actions(self, state=None, agent_key=None):
         """
         Lists the possible actions from a given state.
 
         Params:
+            agent_key: int - the key of the agent for whom to list the possible
+                actions.
             state: StateIF - a state object, if None then the current state is
                 used.
 
@@ -141,12 +143,16 @@ class FMDPIF(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def run(self):
+    def run(self, turns=None):
         """
         Runs the FMDP. 
+
+        Params:
+            turns: int - the number of turns to do for a continual FMDP.
         
-        This method runs an episode of the FMDP. It saves the sequence of
-        state, action and reward tuples as the FMDP runs.
+        This method runs an episode of the FMDP or in the case of a continual
+        FMDP, this method runs the FMDP for the specified number of turns. It
+        saves the sequence of state, action and reward tuples as the FMDP runs.
         """
 
         pass
@@ -159,10 +165,11 @@ class FMDPIF(abc.ABC):
         latest run.
 
         Returns:
-            list - a list of tuples. Each tuple has three elements. The first
-                element is the state, the second element is the action and the
-                third element is the reward. The tuples are in order of the
-                time they were encountered from earliest to latest.
+            [[StateIF, ActionIF, float], ...] - a list of tuples. Each tuple
+            has three elements. The first element is the state, the second
+            element is the action and the third element is the reward. The
+            tuples are in order of the time they were encountered from earliest
+            to latest.
         """
 
         pass
@@ -337,17 +344,6 @@ class StateIF(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def is_terminal(self):
-        """
-        Returns True if the terminal state.
-
-        The terminal state is the state that transitions to itself and rewards
-        zero.
-        """
-
-        pass
-
-    @abc.abstractmethod
     def __eq__(self, other):
         pass
 
@@ -374,37 +370,6 @@ class ActionIF(abc.ABC):
         # pass
 
 
-class NullAction(ActionIF):
-    """
-    Defines the null action object.
-
-    The null action is the action that represents inability to take any normal
-    action. For example, it may not be the action's turn to act according to
-    the state and dynamics of the FMDP.
-    """
-
-    def __init__(self, agent_key):
-        """
-        Initializes the null action. 
-
-        Params:
-            agent_key: int|str - the key of the agent who chose the null
-                action.
-        """
-
-        self._agent_key = agent_key
-
-    @property
-    def agent_key(self):
-        return self._agent_key
-
-    def display(self):
-        print("null action")
-
-    def is_null(self):
-        return True
-
-
 class AgentIF(abc.ABC):
     """
     Declares the methods that an agent object implements.
@@ -422,6 +387,7 @@ class AgentIF(abc.ABC):
 
         pass
 
+    # TODO: Change this and setter below to "key"
     @property
     @abc.abstractmethod
     def agent_key(self):
@@ -516,11 +482,12 @@ class PolicyIF(abc.ABC):
         pass
     
     @abc.abstractmethod
-    def list_actions(self, discount, state, fmdp):
+    def list_actions(self, agent_key, state, fmdp):
         """
         Lists the possible actions with nonzero probability from a given state.
 
         Params:
+            agent_key: int - the agent's key for the fmdp.
             state: StateIF - a state object.
             fmdp: FMDPIF - the FMDP from which the state object is.
 
@@ -530,69 +497,6 @@ class PolicyIF(abc.ABC):
         """
 
         pass
-
-
-class Agent:#(AgentIF):
-    """
-    Defines an agent.
-
-    An agent is a thing capable of taking actions. It does so acccording to a
-    policy.
-    """
-
-    def __init__(self, name):
-        """
-        Initializes the agent.
-
-        Params:
-            name: str - the name to use.
-        """
-        # fmdp: FMDPIF - the fmdp configured with the true environment.
-        # policy: PolicyIF - the agent's policy.
-        # act_env - the true environment's dynamics.
-        # est_env - the agent's estimate of the environment's dynamics.
-
-        self._name = name
-        self._fmdp = None
-        self._discount = None
-        self._policy = None
-        self._act_env = None
-        self._est_env = None
-
-        return
-
-    @property
-    def name(self):
-        return self._name
-
-    @property
-    def discount(self):
-        return self._discount
-
-    def set_discount(self, discount):
-        self._discount = discount
-
-    @property
-    def fmdp(self):
-        return self._fmdp
-
-    def set_fmdp(self, fmdp):
-        self._fmdp = fmdp
-
-    @property
-    def policy(self):
-        return self._policy
-
-    def set_policy(self, policy):
-        self._policy = policy
-
-    def select(self, state, fmdp):
-        action_probs = self._policy.list_actions(state, fmdp, self.discount)
-        rand = random.random()
-        cum_prob = 0
-        for action, prob in action_probs:
-            pass
-
 
 
 class LookupPolicy(PolicyIF):
@@ -610,8 +514,8 @@ class LookupPolicy(PolicyIF):
 
         Params:
             state_actions: list[StateIF, list[(ActionIF, float)] - a list where
-            the first element is a state and the second element is a list of
-            all the possible actions with nonzero probability.
+                the first element is a state and the second element is a list
+                of all the possible actions with nonzero probability.
         """
 
         self._state_actions = state_actions
@@ -621,7 +525,7 @@ class LookupPolicy(PolicyIF):
     def discount(self):
         return self._discount
 
-    def list_actions(self, state, fmdp):
+    def list_actions(self, agent_key, state, fmdp):
         for state_action in self._state_actions:
             if state == state_action[0]:
                 return state_action[1]

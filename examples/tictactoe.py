@@ -131,20 +131,56 @@ class TicTacToeAllFMDP(base.EnumFMDPIF):
         return responses 
 
     def respond(self, action, state=None):
-        pass
+        responses = self.list_responses(action, state)  
+        rand = random.random()
+        cum_prob = 0
+        for n in range(len(responses)): 
+            cum_prob += responses[n][2]
+            if rand < cum_prob:
+                return [responses[n][0], responses[n][1]]
+
+        return [responses[n - 1][0], responses[n - 1][1]]
 
 
     def run(self):
-        if self.agent[0] == 1:
-            player1 = self.agent[1]
-            player2 = self.comp[1]
-        else:
-            player1 = self.comp[1]
-            player2 = self.agent[1]
+        print("{} is {} and {} is {}".format(
+            self.agent[1].name, self.agent[0],
+            self.comp[1].name, self.comp[0]))
 
-        print("{} is X's and {} is O's".format(player1.name, player2.name))
-        self.state.display()
-        action = player1.select
+        turn = 0
+        self.history.append([self.state, None, None])
+        while not self.state.is_terminal():
+            turn += 1
+            self.state.display()
+            action = self.agent[1].select(self.state, self)
+            action.display()
+            next_state, reward = self.respond(action, self.state)
+            self.set_state(next_state)
+            self.history.append([next_state, None, reward])
+            self.history[turn - 1][1] = action
+
+
+        # players = dict()
+        # players[self.agent[0]] = self.agent[1]
+        # players[self.comp[0]] = self.comp[1]
+        # print("{} is X's and {} is O's".format(
+            # players[1].name, players[-1].name))
+
+        # turn = 0
+        # self.history.append([self.state, None, None])
+        # while not self.state.is_terminal():
+            # turn += 1
+            # self.state.display()
+            # action = players[self.state.player].select(self.state, self)
+            # action.display()
+            # next_state, reward = self.respond(action, self.state)
+            # self.set_state(next_state)
+            # self.history.append([next_state, None, reward])
+            # self.history[turn - 1][1] = action
+
+    @property
+    def history(self):
+        return self._history
 
 
 class TicTacToeState:#(base.EnumStateIF):
@@ -575,12 +611,11 @@ def _create_state(x_sqs, o_sqs):
     return state
 
 
-class TicTacToeAgent:#(base.AgentIF):
+class TicTacToeAgent(base.AgentIF):
 
     def __init__(self, name):
         self._name = name
         self._agent_key = None
-        self._discount = None
         self._policy = None
         self._act_env = None
         self._est_env = None
@@ -599,13 +634,6 @@ class TicTacToeAgent:#(base.AgentIF):
         self._agent_key = key
 
     @property
-    def discount(self):
-        return self._discount
-
-    def set_discount(self, discount):
-        self._discount = discount
-
-    @property
     def policy(self):
         return self._policy
 
@@ -617,21 +645,30 @@ class TicTacToeAgent:#(base.AgentIF):
         rand = random.random()
         cum_prob = 0
         for action, prob in action_probs:
-            pass
+            cum_prob += prob
+            if rand < cum_prob:
+                return action
+
+        return action
 
     def list_actions(self, state, fmdp):
         action_probs = self._policy.list_actions(
-            self.agent_key, self.discount, state, fmdp)
+            self.agent_key, state, fmdp)
 
         return action_probs
 
 
 class RandomPolicy:#base.PolicyIF
 
-    def __init__(self, seed=None):
+    def __init__(self, discount=1, seed=None):
+        self._discount = discount
         random.seed(seed) 
 
-    def list_actions(self, agent_key, discount, state, fmdp):
+    @property
+    def discount(self):
+        return self._discount
+
+    def list_actions(self, agent_key, state, fmdp):
         action_probs = []
         actions = fmdp.list_actions(state, agent_key)
         for action in actions:
@@ -643,13 +680,27 @@ class RandomPolicy:#base.PolicyIF
 if __name__ == "__main__":
     from reinforce import dp
     fmdp = TicTacToeAllFMDP()
-    fmdp.set_agent(1, "X")
+
+    human = TicTacToeAgent("Human")
+    human.set_agent_key(1)
+    human.set_policy(RandomPolicy())
+
     comp = TicTacToeAgent("Computer")
     comp.set_agent_key(-1)
-    comp.set_discount(1)
     comp.set_policy(RandomPolicy())
+
+    fmdp.set_agent(1, human)
     fmdp.set_comp(-1, comp)
     opt_pol = dp.value_iter(fmdp, iters=100)
+
+    import pdb
+    pdb.set_trace()
+    human.set_policy(opt_pol)
+
+    fmdp.run()
+
+    pdb.set_trace()
+    #opt_pol = dp.value_iter(fmdp, iters=100)
     #agent = base.Agent("Human") 
     #agent.set_discount(1)
     #comp = base.Agent("Computer")

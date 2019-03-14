@@ -114,12 +114,12 @@ def eval_policy_mc(policy, fmdp, max_episodes=500):
         fmdp: FMDPIF - a FMDP.
         max_episodes: int - maximum number of episodes to do.
     """
-    # state_value_pairs: [[StateIF, float], ...] - state, value pairs
+    # state_values: [[StateIF, float], ...] - state, value pairs
     # state_returns: [[StateIF, [float, ...], ...]] - a list where each entry
     #    is a list for a state and its returns from the different episodes.
 
     fmdp.agent.set_policy(policy)
-    state_value_pairs = []
+    state_values = []
     state_returns = []
 
     episode = 0
@@ -128,9 +128,9 @@ def eval_policy_mc(policy, fmdp, max_episodes=500):
         fmdp.run()
         episode_returns = calc_first_returns(fmdp)
         state_returns = append_returns(episode_returns, state_returns)
-        state_value_pairs = average_returns(state_returns) 
+        state_values = average_returns(state_returns) 
 
-    return state_value_pairs
+    return state_values
 
 
 def calc_first_returns(fmdp):
@@ -141,47 +141,48 @@ def calc_first_returns(fmdp):
         [[StateIF, float], ...] - a list of state, return pairs.
     """
 
-    state_return_pairs = []
-    for n in range(len(fmdp.history)):
+    episode_returns = []
+    for n in range(len(fmdp.history[:-1])):
         state = fmdp.history[n][0]
-        if _is_first_time(state, state_return_pairs):
+        if _is_first_time(state, episode_returns):
             ret = calc_return(n, fmdp)
-            state_return_pairs.append([state, ret])
+            episode_returns.append([state, ret])
 
-    return state_return_pairs
+    return episode_returns
 
 
 def calc_return(n, fmdp):
     ret = 0
     for i in range(len(fmdp.history[n + 1:])):
-        ret += fmdp.agent[1].policy.discount**(j - i) * reward 
+        reward = fmdp.history[i + n + 1]
+        ret += fmdp.agent[1].policy.discount**i * reward 
 
     return ret
 
 
-def _is_first_time(state, state_return_pairs):
+def _is_first_time(state, episode_returns):
     """
     Returns true if this is the first time the state has occurred.
 
     Params:
         state: StateIF - the state to check
-        state_return_pairs: [[StateIF, float], ...] - state, return pairs
+        episode_returns: [[StateIF, float], ...] - state, return pairs
     """
 
-    for seen_state, ret in state_return_pairs:
+    for seen_state, ret in episode_returns:
         if state == seen_state:
             return False
         
     return True
 
 
-def append_returns(returns, state_returns):
-    for state, ret in returns:
+def append_returns(episode_returns, state_returns):
+    for state, ret in episode_returns:
+        new = True
         for state_return in state_returns:
-            new_state = True
             if state == state_return[0]:
                 state_return[1].append(ret)
-                new_state = False
+                new = False
         if new_state:
             state_returns.append([state, [ret]])
 
@@ -189,12 +190,12 @@ def append_returns(returns, state_returns):
 
 
 def average_returns(state_returns):
-    state_value_pairs = []
+    state_values = []
     for state_return in state_returns:
         ave = sum(state_return[1]) / len(state_return[1])
-        state_value_pairs.append([state_return[0], ave])
+        state_values.append([state_return[0], ave])
 
-    return state_value_pairs
+    return state_values
 
 
 # def eval_policy(policy, fmdp, delta=10**-6, iters=500):
