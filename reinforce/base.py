@@ -1,5 +1,6 @@
 #TODO: For now keep all the abstract reinforcement learning code in this file.
 #TODO: May break it out into multiple files later.
+#TODO: Break FMDPIF class into known and unknown dynamics
 """
 Base Module
 
@@ -43,6 +44,9 @@ import random
 class FMDPIF(abc.ABC):
     """
     Declares the methods a finite Markov decision process (FMDP) implements.
+
+    A known FMDP is one in which the environment's dynamics are explicity
+    known. In other words, the function p(s',r|s,a) is specified.
     """
     @property
     @abc.abstractmethod
@@ -57,13 +61,13 @@ class FMDPIF(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def set_agent(self, key, agent):
+    def set_agent(self, agent, key):
         """
         Sets the agent for the FMDP.
 
         Params:
-            key: int - the agent's identifier for the FMDP.
             agent: AgentIF - an agent object to use.
+            key: int - the agent's identifier for the FMDP.
         """
 
         pass
@@ -89,12 +93,12 @@ class FMDPIF(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def list_actions(self, state=None, agent_key=None):
+    def list_actions(self, state=None, key=None):
         """
         Lists the possible actions from a given state.
 
         Params:
-            agent_key: int - the key of the agent for whom to list the possible
+            key: int - the key of the agent for whom to list the possible
                 actions.
             state: StateIF - a state object, if None then the current state is
                 used.
@@ -184,36 +188,6 @@ class FMDPIF(abc.ABC):
         # pass
 
     # Scratch space
-    # @abc.abstractmethod
-    # def get_actions(self, state=None):
-        # """
-        # Returns a list of the possible actions for a given state. 
-
-        # Params:
-            # state: StateIF - a state object. If None, then a list of the
-                # actions for the current state is returned.
-
-        # Returns:
-            # list[ActionIF] - a list of the possible actions.
-            
-        # """
-
-        # pass
-
-    # @abc.abstractmethod
-    # def next(self, action):
-        # """
-        # Updates the FMDP.
-
-        # This method transitions the FMDP to a new state and gives a reward
-        # based on the environment's dynamics.
-
-        # Params:
-            # action: ActionIF - the chosen action.
-        # """
-
-        # pass
-
     # @property
     # @abc.abstractmethod
     # def env(self):
@@ -266,14 +240,6 @@ class FMDPIF(abc.ABC):
     # def agents(self):
         # """
         # Returns a dictionary of the registered agents for the FMDP.
-        # """
-
-        # pass
-
-    # @abc.abstractmethod
-    # def run(self):
-        # """
-        # Runs the FMDP according to its specific environment and rules.
         # """
 
         # pass
@@ -361,13 +327,14 @@ class ActionIF(abc.ABC):
 
         pass
 
-    # @abc.abstractmethod
-    # def is_null(self):
-        # """
-        # Returns true if the null action.
-        # """
+    @property
+    @abc.abstractmethod
+    def key(self):
+        """
+        Returns the key of the agent who selected the action.
+        """
 
-        # pass
+        pass
 
 
 class AgentIF(abc.ABC):

@@ -18,6 +18,7 @@ Exceptions:
 
 import abc
 
+
 class DGIF(abc.ABC):
     """
     Declares the basic methods for creating and using a directed graph (DG).
