@@ -45,19 +45,17 @@ class ChessGame:
     def display(self):
         print(self.state)
 
-    def list_actions(self, state=None, key=None):
-        if not state:
-            state = self.state
-
+    def list_actions(self, key=None, state=None):
         if not key:
             key = self.agent[1]
+
+        if not state:
+            state = self.state
 
         if (state.player != key or state.is_terminal() or state.is_over()):
             return [ChessAction(key, None, True)]
 
         actions = []
-        import pdb
-        pdb.set_trace()
         for move in self.state.list_moves():
             actions.append(ChessAction(key, move))
 
@@ -118,12 +116,15 @@ class ChessState(chess.Board, base.StateIF):
         return self.is_game_over()
 
     def list_moves(self):
-        return self.legal_moves
+        return list(self.legal_moves)
 
     def display(self):
         print(self)
 
     def __eq__(self, other):
+        if not isinstance(other, type(self)):
+            return False
+
         if self.is_terminal() and other.is_terminal():
             return True
 
@@ -138,18 +139,20 @@ class ChessState(chess.Board, base.StateIF):
 
 class ChessAction(chess.Move, base.ActionIF):
 
-    def __init__(self, key, move, null=False):
+    def __init__(self, key, move=None, null=False):
         self._key = key
-        self._null = null
-        if move:
-            fs = move.from_square
-            ts = move.to_square
-            p = move.promotion
-            d = move.drop
-            chess.Move.__init__(self, fs, ts, p, d)
+        if null:
+            self._null = null
+            chess.Move.__init__(self, 0, 0)
+        else:
+            chess.Move.__init__(self, move.from_square, move.to_square,
+                move.promotion, move.drop)
 
     def display(self):
-        pass
+        if self.is_null():
+            print("Null Move")
+        else:
+            print(self)
 
     @property
     def key(self):
