@@ -354,10 +354,9 @@ class AgentIF(abc.ABC):
 
         pass
 
-    # TODO: Change this and setter below to "key"
     @property
     @abc.abstractmethod
-    def agent_key(self):
+    def key(self):
         """
         Returns the agent's key.
         """
@@ -365,7 +364,7 @@ class AgentIF(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def set_agent_key(self, key):
+    def set_key(self, key):
         """
         Sets the agent's key.
 

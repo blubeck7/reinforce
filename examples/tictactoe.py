@@ -611,7 +611,7 @@ def _create_state(x_sqs, o_sqs):
     return state
 
 
-class TicTacToeAgent(base.AgentIF):
+class TicTacToeAgent:#(base.AgentIF):
 
     def __init__(self, name):
         self._name = name
