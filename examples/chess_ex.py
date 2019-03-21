@@ -20,6 +20,7 @@ class ChessGame:
         self._comp = None
         self._comp_key = None
         self._history = []
+        self._env_history = []
 
     @property
     def agent(self):
@@ -58,7 +59,7 @@ class ChessGame:
             return [ChessAction(key, None, True)]
 
         actions = []
-        for move in self.state.list_moves():
+        for move in state.list_moves():
             actions.append(ChessAction(key, move))
 
         return actions
@@ -83,32 +84,29 @@ class ChessGame:
 
         return [state, 0]
 
-    # Split the history of state, action, reward into white and black
     def run(self):
-        print("{} is {} and {} is {}".format(
-            self.agent[0].name, self.agent[1],
-            self.comp[0].name, self.comp[1]))
+        # Uses after states instead of states.
+        # print("{} is {} and {} is {}".format(
+            # self.agent[0].name, self.agent[1],
+            # self.comp[0].name, self.comp[1]))
 
-        self.set_state(ChessState())
+        state = self.state
 
-        n = 0
-        self.history.append([ChessState(), None, None])
-        #self.state.display()
-        while not self.state.is_terminal():
-            n += 1
-            action = self.agent[0].select(self.state, self)
-            #action.display()
-            next_state, reward = self.respond(action, self.state)
-            self.set_state(next_state)
-            #self.state.display()
-            self.history.append(
-                [ChessState(self.state.fen(), self.state.is_terminal()),
-                None, reward])
-            self.history[n - 1][1] = action
+        while not state.is_terminal():
+            action = self.agent[0].select(state, self)
+            state, reward = self.respond(action, state)
+            if not action.is_null() or state.is_terminal():
+                hist = ChessState(state.fen(), state.is_terminal())
+                self.history.append([hist, action, reward])
 
     @property
     def history(self):
         return self._history
+
+    def reset(self):
+        self.history.clear()
+        self._env_history.clear()
+        self.set_state(ChessState())
 
 
 class ChessState(chess.Board, base.StateIF):
@@ -255,17 +253,20 @@ class RandomPolicy:#base.PolicyIF
 
 if __name__ == "__main__":
     fmdp = ChessGame()
-
     human = ChessAgent("Human")
     human.set_key(1)
     human.set_policy(RandomPolicy())
-
     comp = ChessAgent("Computer")
     comp.set_key(-1)
     comp.set_policy(RandomPolicy())
-
     fmdp.set_agent(human, 1)
     fmdp.set_comp(comp, -1)
+    fmdp.reset()
+
+    # s = ChessState(
+    # "rnb1k1nr/pppp1ppp/8/2b1p3/4P3/3P3P/PPP1KqP1/RNBQ1BNR w kq - 0 5")
+    # "r1bqkb1r/pppp1Qpp/2n2n2/4p3/2B1P3/8/PPPP1PPP/RNB1K1NR b KQkq - 0 4")
+    # fmdp.set_state(s)
 
     fmdp.run()
     print(fmdp.history[len(fmdp.history)-1][0].winner)
