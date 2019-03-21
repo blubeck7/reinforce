@@ -107,51 +107,71 @@ def lookup_state_value(state, state_value_pairs):
             return state_value[1]
 
 
-def eval_policy_mc(policy, fmdp, max_episodes=500):
+def mc_control(epsilon):
+        """
+        On-policy first-visit MC control.
+
+        This function implement on-policy first visit Monte Carlo control to
+        estimate the optimal episilon-greedy policy. See pg. 101 of
+        Introduction to Reinforcement Learning by Barto and Sutton.
+
+        Params:
+            episilon: float - a real number strictly greater than 0, which
+                determines how often the e-greedy policy takes the greedy
+                action or takes another action at random.
+        """
+
+        # Note that under the optimal policy, v(s) = max_{a in A(s)} q(s,a)
+
+ def mc_pred(policy, fmdp, max_episodes=500):
     """
-    Evaluates a policy for a FMDP using first-visit Monte Carlo prediction.
+    First-visit Monte Carlo prediction.
+
+    This function implements first-visti Monte Carlo prediction to estimate the
+    state value function under a given policy. See pg. 92 of Introduction to
+    Reinforcement Learning by Barto and Sutton.
     
     Params:
         policy: PolicyIF - the policy to evaluate.
         fmdp: FMDPIF - a FMDP.
         max_episodes: int - maximum number of episodes to do.
     """
-    # state_values: [[StateIF, float], ...] - state, value pairs
-    # state_returns: [[StateIF, [float, ...], ...]] - a list where each entry
-    #    is a list for a state and its returns from the different episodes.
+    # # state_values: [[StateIF, float], ...] - state, value pairs
+    # # state_returns: [[StateIF, [float, ...], ...]] - a list where each entry
+    # #    is a list for a state and its returns from the different episodes.
 
-    fmdp.agent[0].set_policy(policy)
-    state_values = []
-    state_returns = []
+    # fmdp.agent[0].set_policy(policy)
+    # state_values = []
+    # state_returns = []
 
-    episode = 0
-    while episode < max_episodes:
-        episode += 1
-        fmdp.run()
-        episode_returns = calc_first_returns(fmdp)
-        state_returns = append_returns(episode_returns, state_returns)
-        state_values = average_returns(state_returns) 
+    # episode = 0
+    # while episode < max_episodes:
+        # episode += 1
+        # fmdp.run()
+        # episode_returns = calc_first_returns(fmdp)
+        # state_returns = append_returns(episode_returns, state_returns)
+        # state_values = average_returns(state_returns) 
 
-    return state_values
-
-
-def calc_first_returns(history):
-    episode_returns = []
-    for i in range(len(history) - 1, 0, -1): 
-        new_state = True
-        state = history[i - 1][0]
-        reward = history[i][2]
-        for j in range(len(episode_returns)):
-            seen_state = episode_returs[j][0]
-            if state == seen_state:
-                new_state = False
+    # return state_values
 
 
-class heturn:
-    def __init__(self):
-        self.state = None
-        self.cum_ret = 0
-        self.n = 0
+# def calc_first_returns(history):
+    # episode_returns = []
+    # for i in range(len(history) - 1, 0, -1): 
+        # new_state = True
+        # state = history[i - 1][0]
+        # reward = history[i][2]
+        # for j in range(len(episode_returns)):
+            # seen_state = episode_returs[j][0]
+            # if state == seen_state:
+                # new_state = False
+
+
+# class heturn:
+    # def __init__(self):
+        # self.state = None
+        # self.cum_ret = 0
+        # self.n = 0
 
         # if state == seen_state:
             # return False

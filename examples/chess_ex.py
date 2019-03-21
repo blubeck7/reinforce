@@ -108,6 +108,27 @@ class ChessGame:
         self._env_history.clear()
         self.set_state(ChessState())
 
+    def save(self, filepath, num, append=True):
+        """
+        Saves the history to the file.
+
+        Params:
+            filepath: str - the full file path of where to save the history.
+            num: int - episode number.
+            append: bool - whether to append to the file or overwrite it.
+        """
+
+        mode = "a"
+        if not append:
+            mode = "w"
+
+        with open(filepath, mode) as f:
+            for state, action, reward in self.history:
+                out_str = (str(num) + "," +
+                    state.fen() + "," + str(state.is_terminal()) + "," +
+                    str(action) + "," + str(reward)) + "\n"
+                f.write(out_str)
+
 
 class ChessState(chess.Board, base.StateIF):
 
@@ -269,6 +290,7 @@ if __name__ == "__main__":
     # fmdp.set_state(s)
 
     fmdp.run()
-    print(fmdp.history[len(fmdp.history)-1][0].winner)
+    fmdp.save(r"/efs-dev/home/bmli/reinforce/data/games.csv", 1)
+    # print(fmdp.history[len(fmdp.history)-1][0].winner)
     import pdb
     pdb.set_trace()
