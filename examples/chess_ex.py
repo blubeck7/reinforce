@@ -5,6 +5,7 @@ Implements chess as a FMDP. One of the players is designated as the agent.
 """
 
 
+import collections
 import random
 import chess
 from reinforce import base
@@ -82,6 +83,7 @@ class ChessGame:
 
         return [state, 0]
 
+    # Split the history of state, action, reward into white and black
     def run(self):
         print("{} is {} and {} is {}".format(
             self.agent[0].name, self.agent[1],
@@ -91,14 +93,14 @@ class ChessGame:
 
         n = 0
         self.history.append([ChessState(), None, None])
-        self.state.display()
+        #self.state.display()
         while not self.state.is_terminal():
             n += 1
             action = self.agent[0].select(self.state, self)
-            action.display()
+            #action.display()
             next_state, reward = self.respond(action, self.state)
             self.set_state(next_state)
-            self.state.display()
+            #self.state.display()
             self.history.append(
                 [ChessState(self.state.fen(), self.state.is_terminal()),
                 None, reward])

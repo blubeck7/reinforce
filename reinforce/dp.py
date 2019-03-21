@@ -24,7 +24,9 @@ def value_iter(fmdp, discount=1, delta=10**-6, iters=500):
 
     This function uses value iteration to find the optimal policy for an
     enumerable FMDP. Value iteration combines in one loop over the state space,
-    policy evaluation and policy improvement.
+    policy evaluation and policy improvement. Value iteration has high
+    requirements though. It requires a FMDP that has an enumerable state space
+    and a FMDP whose dynamics are explicitly known.
 
     Params:
         fmdp: EnumFMDPIF - an enumerable FMDP.
@@ -118,7 +120,7 @@ def eval_policy_mc(policy, fmdp, max_episodes=500):
     # state_returns: [[StateIF, [float, ...], ...]] - a list where each entry
     #    is a list for a state and its returns from the different episodes.
 
-    fmdp.agent.set_policy(policy)
+    fmdp.agent[0].set_policy(policy)
     state_values = []
     state_returns = []
 
@@ -133,69 +135,90 @@ def eval_policy_mc(policy, fmdp, max_episodes=500):
     return state_values
 
 
-def calc_first_returns(fmdp):
-    """
-    Calculates the return following the first occurrence of each state.
-
-    Returns:
-        [[StateIF, float], ...] - a list of state, return pairs.
-    """
-
+def calc_first_returns(history):
     episode_returns = []
-    for n in range(len(fmdp.history[:-1])):
-        state = fmdp.history[n][0]
-        if _is_first_time(state, episode_returns):
-            ret = calc_return(n, fmdp)
-            episode_returns.append([state, ret])
-
-    return episode_returns
-
-
-def calc_return(n, fmdp):
-    ret = 0
-    for i in range(len(fmdp.history[n + 1:])):
-        reward = fmdp.history[i + n + 1]
-        ret += fmdp.agent[1].policy.discount**i * reward 
-
-    return ret
+    for i in range(len(history) - 1, 0, -1): 
+        new_state = True
+        state = history[i - 1][0]
+        reward = history[i][2]
+        for j in range(len(episode_returns)):
+            seen_state = episode_returs[j][0]
+            if state == seen_state:
+                new_state = False
 
 
-def _is_first_time(state, episode_returns):
-    """
-    Returns true if this is the first time the state has occurred.
+class heturn:
+    def __init__(self):
+        self.state = None
+        self.cum_ret = 0
+        self.n = 0
 
-    Params:
-        state: StateIF - the state to check
-        episode_returns: [[StateIF, float], ...] - state, return pairs
-    """
+        # if state == seen_state:
+            # return False
 
-    for seen_state, ret in episode_returns:
-        if state == seen_state:
-            return False
+# def calc_first_returns(fmdp):
+    # """
+    # Calculates the return following the first occurrence of each state.
+
+    # Returns:
+        # [[StateIF, float], ...] - a list of state, return pairs.
+    # """
+
+    # episode_returns = []
+    # for n in range(len(fmdp.history[:-1])):
+        # state = fmdp.history[n][0]
+        # if _is_first_time(state, episode_returns):
+            # ret = calc_return(n, fmdp)
+            # episode_returns.append([state, ret])
+
+    # return episode_returns
+
+
+# def calc_return(n, fmdp):
+    # ret = 0
+    # for i in range(len(fmdp.history[n + 1:])):
+        # reward = fmdp.history[i + n + 1]
+        # ret += fmdp.agent[1].policy.discount**i * reward 
+
+    # return ret
+
+
+# def _is_first_time(state, episode_returns):
+    # """
+    # Returns true if this is the first time the state has occurred.
+
+    # Params:
+        # state: StateIF - the state to check
+        # episode_returns: [[StateIF, float], ...] - state, return pairs
+    # """
+
+    # for seen_state, ret in episode_returns:
+        # if state == seen_state:
+            # return False
         
-    return True
+    # return True
 
 
-def append_returns(episode_returns, state_returns):
-    for state, ret in episode_returns:
-        new = True
-        for state_return in state_returns:
-            if state == state_return[0]:
-                state_return[1].append(ret)
-                new = False
-        if new_state:
-            state_returns.append([state, [ret]])
+# def append_returns(episode_returns, state_returns):
+    # for state, ret in episode_returns:
+        # new = True
+        # for state_return in state_returns:
+            # if state == state_return[0]:
+                # state_return[1].append(ret)
+                # new = False
+        # if new_state:
+            # state_returns.append([state, [ret]])
 
-    return state_returns
+    # return state_returns
 
 
-def average_returns(state_returns):
-    state_values = []
-    for state_return in state_returns:
-        ave = sum(state_return[1]) / len(state_return[1])
-        state_values.append([state_return[0], ave])
+# def average_returns(state_returns):
+    # state_values = []
+    # for state_return in state_returns:
+        # ave = sum(state_return[1]) / len(state_return[1])
+        # state_values.append([state_return[0], ave])
 
-    return state_values
+    # return state_values
 
 
 # def eval_policy(policy, fmdp, delta=10**-6, iters=500):
@@ -296,114 +319,3 @@ def average_returns(state_returns):
     # while not stable:
         # stable = self._do_policy_eval(fmdp)
         # self._do_policy_impr(fmdp)
-
-
-
-
-
-
-
-
-
-# class DPSolver:
-    # """
-    # Defines dynamic programming algorithms to determine an optimal policy.
-
-    # This class implements the dynamic programming algorithms in the book
-    # Introduction to Reinforcement Learning 2nd ed to find an optimal policy for
-    # a given FMDP. A dynamic programming algorithm assumes that the dynamics of
-    # the FMDP are completely known, and it operates on the entire state space of
-    # the FMDP. Thus, these algorithms should be used only when it is feasible to
-    # enumerate FMDP's state space.
-    # """
-
-    # def __init__(self):
-        # """
-        # Initializes the enumerable dynamic programming solver object.
-        # """
-        # # The length of values is the number of states
-        # # The length of actions is the number of states
-        # self._values = [] 
-        # self._actions = [] 
-        # self._tol = 0.001
-
-    # def do_policy_iter(self, fmdp):
-        # """
-        # Determines the optimal policy using policy iteration.
-
-        # This function determines the optimal policy for an enumerbale FMDP
-        # using policy iteration.
-
-        # Params:
-            # fmdp: EnumFMDPIF - an enumerable FMDP object. 
-        # """
-
-        # self._init_policy(fmdp)
-        # stable = False
-        # while not stable:
-            # stable = self._do_policy_eval(fmdp)
-            # self._do_policy_impr(fmdp)
-
-    # def _init_policy(self, fmdp):
-        # for state in fmdp.states:
-            # self._values.append([state, 0])
-            # self._actions.append([state, fmdp.list_actions(state)[0]])
-
-    # def _do_policy_eval(self, fmdp):
-        # """
-        # Calculates the value of each state under the policy.
-        # """
-
-        # import pdb
-        # pdb.set_trace()
-        # n_iter = 0
-        # while True:
-            # delta = 0
-            # n_iter += 1
-            # for state_value, state_action in zip(self._values, self._actions):
-                # state = state_value[0]
-                # assert state == state_action[0]
-                # value = state_value[1]
-                # action = state_action[1]
-                # state_value[1] = self._calc_value(state, action, fmdp)
-                # delta = max(delta, abs(value - state_value[1]))
-            # if delta < self._tol:
-                # break
-
-        # if n_iter == 1:
-            # return True
-
-        # return False
-
-    # def _calc_value(self, state, action, fmdp):
-        # value = 0
-        # responses = fmdp.list_responses(state, action)
-        # import pdb
-        # pdb.set_trace()
-        # for next_state, reward, prob in responses:
-            # # TODO: Change 1 to a discount factor
-            # # TODO: Add logic for terminal state
-            # for s, v in self._values:
-                # if next_state == s:
-                    # break
-            # value += prob * (reward + 1 * v)
-
-        # return value
-
-    # def _do_policy_impr(self, fmdp):
-        # for state_action in self._actions:
-            # action = state_ction[1]
-            # state_action[0] = self._calc_action(state, fmdp)
-
-        # return stable
-
-    # def _calc_action(self, state, fmdp):
-        # actions = fmdp.list_actions(state)
-        # best_action = actions[0]
-        # best_value = self._calc_value(state, best_action, fmdp) 
-        # for action in actions[1:]:
-            # if self._calc_value(state, action, fmdp) > best_value:
-                # best_action = action
-
-        # return best_action
-
