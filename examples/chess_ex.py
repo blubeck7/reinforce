@@ -179,7 +179,14 @@ class ChessState(chess.Board, base.StateIF):
         if self.is_terminal() or other.is_terminal():
             return False
 
-        return chess.Board.__eq__(self, other)
+        return self.fen() == other.fen()
+        #chess.Board.__eq__(self, other)
+
+    def __hash__(self):
+        if self.is_terminal():
+            return hash("Terminal State")
+
+        return hash(self.fen())
 
     def to_vec(self):
         pass
@@ -276,7 +283,6 @@ if __name__ == "__main__":
     fmdp = ChessGame()
     human = ChessAgent("Human")
     human.set_key(1)
-    human.set_policy(RandomPolicy())
     comp = ChessAgent("Computer")
     comp.set_key(-1)
     comp.set_policy(RandomPolicy())
@@ -284,13 +290,16 @@ if __name__ == "__main__":
     fmdp.set_comp(comp, -1)
     fmdp.reset()
 
+    from reinforce import dp
+    sr = dp.mc_pred(RandomPolicy(), fmdp, 1000)
+    for key, value in sr.items():
+        if value[1] > 1:
+            print(key)
+            print(value)
     # s = ChessState(
     # "rnb1k1nr/pppp1ppp/8/2b1p3/4P3/3P3P/PPP1KqP1/RNBQ1BNR w kq - 0 5")
     # "r1bqkb1r/pppp1Qpp/2n2n2/4p3/2B1P3/8/PPPP1PPP/RNB1K1NR b KQkq - 0 4")
     # fmdp.set_state(s)
 
-    fmdp.run()
-    fmdp.save(r"/efs-dev/home/bmli/reinforce/data/games.csv", 1)
+    #fmdp.save(r"/efs-dev/home/bmli/reinforce/data/games.csv", 1)
     # print(fmdp.history[len(fmdp.history)-1][0].winner)
-    import pdb
-    pdb.set_trace()

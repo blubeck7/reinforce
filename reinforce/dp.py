@@ -120,14 +120,15 @@ def mc_control(epsilon):
                 determines how often the e-greedy policy takes the greedy
                 action or takes another action at random.
         """
-
         # Note that under the optimal policy, v(s) = max_{a in A(s)} q(s,a)
+        pass
 
- def mc_pred(policy, fmdp, max_episodes=500):
+
+def mc_pred(policy, fmdp, max_episodes=500):
     """
     First-visit Monte Carlo prediction.
 
-    This function implements first-visti Monte Carlo prediction to estimate the
+    This function implements first-visit Monte Carlo prediction to estimate the
     state value function under a given policy. See pg. 92 of Introduction to
     Reinforcement Learning by Barto and Sutton.
     
@@ -136,87 +137,53 @@ def mc_control(epsilon):
         fmdp: FMDPIF - a FMDP.
         max_episodes: int - maximum number of episodes to do.
     """
-    # # state_values: [[StateIF, float], ...] - state, value pairs
-    # # state_returns: [[StateIF, [float, ...], ...]] - a list where each entry
-    # #    is a list for a state and its returns from the different episodes.
+    # state_returns: {StateIF: [float, float, float]} - the key is the state,
+    # which must be hashable and for each state a list of the cumulative return
+    # across all episodes, the num of episodes and the average is kept.
 
-    # fmdp.agent[0].set_policy(policy)
-    # state_values = []
-    # state_returns = []
+    fmdp.agent[0].set_policy(policy)
+    state_returns = dict() 
 
-    # episode = 0
-    # while episode < max_episodes:
-        # episode += 1
-        # fmdp.run()
-        # episode_returns = calc_first_returns(fmdp)
-        # state_returns = append_returns(episode_returns, state_returns)
-        # state_values = average_returns(state_returns) 
+    episode = 0
+    while episode < max_episodes:
+        episode += 1
+        print(episode)
+        fmdp.reset()
+        fmdp.run()
+        add_returns(fmdp.history, policy.discount, state_returns)
 
-    # return state_values
-
-
-# def calc_first_returns(history):
-    # episode_returns = []
-    # for i in range(len(history) - 1, 0, -1): 
-        # new_state = True
-        # state = history[i - 1][0]
-        # reward = history[i][2]
-        # for j in range(len(episode_returns)):
-            # seen_state = episode_returs[j][0]
-            # if state == seen_state:
-                # new_state = False
+    return state_returns
 
 
-# class heturn:
-    # def __init__(self):
-        # self.state = None
-        # self.cum_ret = 0
-        # self.n = 0
+def add_returns(history, discount, state_returns):
+    cum_ret = 0
+    for i in range(len(history) - 2, -1, -1): 
+        state = history[i][0]
+        reward = history[i + 1][2]
+        cum_ret = cum_ret * discount + reward
+        if _first_time(state, history, i): 
+            if state in state_returns:
+                stats = state_returns[state]
+            else:
+                state_returns[state] = [0, 0, 0]
+                stats = state_returns[state]
 
-        # if state == seen_state:
-            # return False
-
-# def calc_first_returns(fmdp):
-    # """
-    # Calculates the return following the first occurrence of each state.
-
-    # Returns:
-        # [[StateIF, float], ...] - a list of state, return pairs.
-    # """
-
-    # episode_returns = []
-    # for n in range(len(fmdp.history[:-1])):
-        # state = fmdp.history[n][0]
-        # if _is_first_time(state, episode_returns):
-            # ret = calc_return(n, fmdp)
-            # episode_returns.append([state, ret])
-
-    # return episode_returns
+            stats[0] = stats[0] + cum_ret
+            stats[1] = stats[1] + 1
+            stats[2] = stats[0] / stats[1]
 
 
-# def calc_return(n, fmdp):
-    # ret = 0
-    # for i in range(len(fmdp.history[n + 1:])):
-        # reward = fmdp.history[i + n + 1]
-        # ret += fmdp.agent[1].policy.discount**i * reward 
+def _first_time(state, history, i):
+    """
+    Returns true if this is the first time the state has occurred.
 
-    # return ret
+    Params:
+        state: StateIF - the state to check.
+        history: [[StateIF, ActionIF, float], ...] - a sequence of state,
+            action, reward tuples.
+    """
 
-
-# def _is_first_time(state, episode_returns):
-    # """
-    # Returns true if this is the first time the state has occurred.
-
-    # Params:
-        # state: StateIF - the state to check
-        # episode_returns: [[StateIF, float], ...] - state, return pairs
-    # """
-
-    # for seen_state, ret in episode_returns:
-        # if state == seen_state:
-            # return False
-        
-    # return True
+    return not any(map(lambda tup: tup[0] == state, history[:i-1]))
 
 
 # def append_returns(episode_returns, state_returns):
