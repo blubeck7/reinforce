@@ -135,6 +135,7 @@ class ChessState(chess.Board, base.StateIF):
     def __init__(self, fen=chess.STARTING_FEN, terminal=False):
         self._terminal = terminal
         chess.Board.__init__(self, fen)
+        self._board = fen.split()[0]
 
     @property
     def player(self):
@@ -179,14 +180,14 @@ class ChessState(chess.Board, base.StateIF):
         if self.is_terminal() or other.is_terminal():
             return False
 
-        return self.fen() == other.fen()
+        return self._board == other._board
         #chess.Board.__eq__(self, other)
 
     def __hash__(self):
         if self.is_terminal():
             return hash("Terminal State")
 
-        return hash(self.fen())
+        return hash(self._board)
 
     def to_vec(self):
         pass
@@ -279,7 +280,9 @@ class RandomPolicy:#base.PolicyIF
         return action_probs
 
 
-if __name__ == "__main__":
+def gen_state_values(policy, num):
+    from reinforce import dp
+
     fmdp = ChessGame()
     human = ChessAgent("Human")
     human.set_key(1)
@@ -290,12 +293,56 @@ if __name__ == "__main__":
     fmdp.set_comp(comp, -1)
     fmdp.reset()
 
-    from reinforce import dp
-    sr = dp.mc_pred(RandomPolicy(), fmdp, 1000)
-    for key, value in sr.items():
-        if value[1] > 1:
-            print(key)
-            print(value)
+    state_returns = dp.mc_pred(policy, fmdp, num)
+
+    return state_returns 
+
+
+def save_state_values(state_values, filepath, append=True):
+    """
+    Saves the state values to a file.
+
+    Params:
+        state_values: dict - a dictionary in the form {state: [cum_ret,
+        num_episodes, average], ...} with the raw state values to save.
+        filepath: str - the full file path of where to save the state values.
+        append: bool - whether to append to the file or overwrite it.
+    """
+
+    mode = "a"
+    if not append:
+        mode = "w"
+
+    with open(filepath, mode) as f:
+        for state, stats in state_values.items():
+            cum_ret = stats[0]
+            n = stats[1]
+            ave = stats[2]
+            out_str = (str(state.fen()) + "," + str(cum_ret) + "," +
+                str(n) + "," + str(ave)) + "\n"
+            f.write(out_str)
+
+
+def main(filepath, policy, num):
+    print(multiprocessing.current_process().name)
+    state_values = gen_state_values(policy, num)
+    save_state_values(state_values, filepath)
+
+
+if __name__ == "__main__":
+    import multiprocessing
+
+    filepath = "/efs-dev/home/bmli/reinforce/data/state_values{}.csv"
+    policy = RandomPolicy()
+    num = 10000 
+
+    jobs = []
+    for i in range(16):
+        job = multiprocessing.Process(
+            target=main, args=(filepath.format(i), policy, num))
+        jobs.append(job)
+        job.start()
+
     # s = ChessState(
     # "rnb1k1nr/pppp1ppp/8/2b1p3/4P3/3P3P/PPP1KqP1/RNBQ1BNR w kq - 0 5")
     # "r1bqkb1r/pppp1Qpp/2n2n2/4p3/2B1P3/8/PPPP1PPP/RNB1K1NR b KQkq - 0 4")

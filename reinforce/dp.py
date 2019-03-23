@@ -147,10 +147,12 @@ def mc_pred(policy, fmdp, max_episodes=500):
     episode = 0
     while episode < max_episodes:
         episode += 1
-        print(episode)
         fmdp.reset()
         fmdp.run()
         add_returns(fmdp.history, policy.discount, state_returns)
+
+        if episode % 100 == 0:
+            print(episode)
 
     return state_returns
 
@@ -161,21 +163,22 @@ def add_returns(history, discount, state_returns):
         state = history[i][0]
         reward = history[i + 1][2]
         cum_ret = cum_ret * discount + reward
-        if _first_time(state, history, i): 
-            if state in state_returns:
-                stats = state_returns[state]
-            else:
-                state_returns[state] = [0, 0, 0]
-                stats = state_returns[state]
 
+        # If state has never been seen before this point, then create an entry
+        # for it in the global dictionary of returns.
+        if not state in state_returns:
+            state_returns[state] = [0, 0, 0]
+        
+        if _first_time_episode(state, history, i): 
+            stats = state_returns[state]
             stats[0] = stats[0] + cum_ret
             stats[1] = stats[1] + 1
             stats[2] = stats[0] / stats[1]
 
 
-def _first_time(state, history, i):
+def _first_time_episode(state, history, i):
     """
-    Returns true if this is the first time the state has occurred.
+    Returns true if this is the first time the state occurred in an episode.
 
     Params:
         state: StateIF - the state to check.
@@ -183,7 +186,7 @@ def _first_time(state, history, i):
             action, reward tuples.
     """
 
-    return not any(map(lambda tup: tup[0] == state, history[:i-1]))
+    return not any(map(lambda tup: tup[0] == state, history[:i]))
 
 
 # def append_returns(episode_returns, state_returns):
