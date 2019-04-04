@@ -7,6 +7,7 @@ Implements chess as a FMDP. One of the players is designated as the agent.
 
 import collections
 import random
+import os
 import chess
 from reinforce import base
 
@@ -318,35 +319,83 @@ def save_state_values(state_values, filepath, append=True):
             cum_ret = stats[0]
             n = stats[1]
             ave = stats[2]
-            out_str = (str(state.fen()) + "," + str(cum_ret) + "," +
-                str(n) + "," + str(ave)) + "\n"
+            if isinstance(state, str):
+                out_str = (state + "," + str(cum_ret) + "," +
+                    str(n) + "," + str(ave)) + "\n"
+            else:
+                out_str = (str(state.fen()) + "," + str(cum_ret) + "," +
+                    str(n) + "," + str(ave)) + "\n"
             f.write(out_str)
+        f.flush()
 
 
-def main(filepath, policy, num):
+def load_state_values(filepath):
+    state_values = dict()
+    with open(filepath, "r") as f:
+        for line in f:
+            line = line[:len(line) - 1] # removes the '\n' at the end
+            state, tot, cnt, ave = line.split(",")
+            state_values[state] = [0, 0, 0] 
+            state_values[state][0] = int(tot)
+            state_values[state][1] = int(cnt)
+            state_values[state][2] = float(ave)
+
+    return state_values
+
+
+def estimate(filepath, policy, num):
     print(multiprocessing.current_process().name)
     state_values = gen_state_values(policy, num)
     save_state_values(state_values, filepath)
 
 
+def combine(in_dir, out_dir, out_file):
+    """
+    Combines the state value data into one file.
+    """
+    state_values = dict()
+
+    # merge the separate files into one dictionary
+    for in_file in os.listdir(in_dir):
+        print("Merging {}".format(in_file))
+        with open(os.path.join(in_dir, in_file), "r") as f:
+            for line in f:
+                line = line[:len(line) - 1]
+                state, tot, cnt, ave = line.split(",")
+                tot = int(tot)
+                cnt = int(cnt)
+                state = state.split()[0]
+                if state in state_values:
+                    cur_tot = state_values[state][0]
+                    new_tot = cur_tot + tot
+                    state_values[state][0] = new_tot 
+                    cur_cnt = state_values[state][1]
+                    new_cnt = cur_cnt + cnt
+                    state_values[state][1] = new_cnt 
+                    state_values[state][2] = new_tot / new_cnt
+                else:
+                    state_values[state] = [0, 0, 0] 
+                    state_values[state][0] = tot 
+                    state_values[state][1] = cnt 
+                    state_values[state][2] = tot / cnt 
+
+    # output as one file
+    save_state_values(state_values, os.path.join(out_dir, out_file))
+
+
 if __name__ == "__main__":
-    import multiprocessing
+    # import multiprocessing
 
-    filepath = "/efs-dev/home/bmli/reinforce/data/state_values{}.csv"
-    policy = RandomPolicy()
-    num = 10000 
+    # filepath = "/efs-dev/home/bmli/reinforce/data/state_values{}.csv"
+    # policy = RandomPolicy()
+    # num = 20000 
 
-    jobs = []
-    for i in range(16):
-        job = multiprocessing.Process(
-            target=main, args=(filepath.format(i), policy, num))
-        jobs.append(job)
-        job.start()
+    # jobs = []
+    # for i in range(16):
+        # job = multiprocessing.Process(
+            # target=estimate, args=(filepath.format(i), policy, num))
+        # jobs.append(job)
+        # job.start()
 
-    # s = ChessState(
-    # "rnb1k1nr/pppp1ppp/8/2b1p3/4P3/3P3P/PPP1KqP1/RNBQ1BNR w kq - 0 5")
-    # "r1bqkb1r/pppp1Qpp/2n2n2/4p3/2B1P3/8/PPPP1PPP/RNB1K1NR b KQkq - 0 4")
-    # fmdp.set_state(s)
-
-    #fmdp.save(r"/efs-dev/home/bmli/reinforce/data/games.csv", 1)
-    # print(fmdp.history[len(fmdp.history)-1][0].winner)
+    dirpath = "/efs-dev/home/bmli/reinforce/data/"
+    combine(dirpath, dirpath, "state_values_all.csv")
