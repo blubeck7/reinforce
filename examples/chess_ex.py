@@ -6,11 +6,20 @@ Implements chess as a FMDP. One of the players is designated as the agent.
 
 
 import collections
-import random
+import multiprocessing
 import os
+import random
+import signal
 import chess
+import numpy as np
+import pandas as pd
 from reinforce import base
 
+
+BOARDLENGTH = 768
+PIECEOFFSETS = {"P": 0, "N": 64, "B": 128, "R": 192, "Q": 256, "K": 320,
+    "p": 384, "n": 448, "b": 512, "r": 576, "q": 640, "k": 704}
+    
 
 class ChessGame:
 
@@ -383,10 +392,122 @@ def combine(in_dir, out_dir, out_file):
     save_state_values(state_values, os.path.join(out_dir, out_file))
 
 
-if __name__ == "__main__":
-    # import multiprocessing
+class EpsilonGreedyPolicy:#base.PolicyIF
+    pass
 
-    # filepath = "/efs-dev/home/bmli/reinforce/data/state_values{}.csv"
+class MCTSPolicy:#base.PolicyIF
+
+    def __init__(self, max_time=60, tree_policy=None, rollout_policy=None):
+        self.max_time = max_time
+        self.tree_policy = tree_policy
+        self.rollout_policy = rollout_policy
+        self.root = None
+
+    def list_actions(self, key, state, fmdp):
+        signal.signal(signal.SIGALRM, self.handle_timeout)
+        signal.alarm(self.max_time)
+
+        self.root = MCTSNode(state)
+        while True:
+            leaf = self.select(root)
+            reward = self.simulate_node(leaf)
+            leaf.backup(reward)
+
+    def select(self, root):
+        """
+        Utilizes the tree policy to select a leaf node to simulate.
+
+        Params:
+            root:
+        """
+
+        
+    
+
+
+        action_probs = []
+        actions = fmdp.list_actions(key, state)
+        for action in actions:
+            action_probs.append([action, 1 / len(actions)])
+
+        return action_probs
+
+    def select(self, state, fmdp):
+        signal.signal(signal.SIGALRM, self.handle_timeout)
+        signal.alarm(self.max_time)
+
+        root = MCTSChessNode(state)
+
+    def handle_timeout(self, sig_num, frame): 
+        action = 1
+        pass
+
+
+
+
+class MCTSNode:
+
+    def __init__(self, state, parent=None):
+        self.state = state
+        self.parent = parent
+        self.children = []
+
+
+def process_raw_data(indir, infile, outdir):
+    
+    data = pd.read_csv(
+        os.path.join(indir, infile),
+        header=None,
+        names=["BOARD", "TOTAL", "COUNT", "VALUE"],
+        dtype={"BOARD": str, "TOTAL": np.int_, "COUNT": np.int_, "VALUE":
+            np.float_})
+
+    data = data.sample(frac=1, random_state=1)
+
+    size = data.shape[0] // 16
+    for i in range(15):
+        df = data.iloc[(i*size):(i+1)*size, :]
+        outfile = os.path.join(outdir, str(i) + ".csv") 
+        df.to_csv(outfile)
+    df = data.iloc[(15*size):, :]
+    outfile = os.path.join(outdir, str(15) + ".csv") 
+    df.to_csv(outfile)
+
+    jobs = []
+    for i in range(16):
+        job = multiprocessing.Process(
+            target=clean_data, args=(outdir, i))
+        jobs.append(job)
+        job.start()
+
+    return
+
+
+def clean_data(indir, i):
+    data
+    #vecs = data.apply(lambda row: fen_to_vec(row["BOARD"]), axis=1)
+    #data["VEC"] = vecs
+    # data["WEIGHT"] = np.sqrt(data["COUNT"])
+    # data = data.loc[:, ["VEC", "VALUE", "WEIGHT"]]
+    # data.to_parquet(outfile)
+
+def fen_to_vec(fen):
+    vec = np.zeros(BOARDLENGTH, dtype=np.int8)
+    board = chess.BaseBoard(fen)
+    pieces = board.piece_map()
+    for square in pieces:
+        piece = pieces[square]
+        ind = PIECEOFFSETS[piece.symbol()] + square 
+        vec[ind] = 1
+
+    return(vec)
+
+
+if __name__ == "__main__":
+    # Generate Experience, uses first-visit monte carlo prediction 
+
+    filepath = "/efs-dev/home/bmli/reinforce/data/state_values{}.csv"
+    dirpath = "/efs-dev/home/bmli/reinforce/data/"
     # policy = RandomPolicy()
     # num = 20000 
 
@@ -397,5 +518,12 @@ if __name__ == "__main__":
         # jobs.append(job)
         # job.start()
 
-    dirpath = "/efs-dev/home/bmli/reinforce/data/"
-    combine(dirpath, dirpath, "state_values_all.csv")
+    #combine(dirpath, dirpath, "state_values_all.csv")
+
+    # Generate Model
+    # Fits a neural network to the state value data to generalize it.
+    # First process the data for modeling
+    infile = os.path.join(dirpath, "state_values_all.csv") 
+    outfile = os.path.join(dirpath, "state_values_all.pq")
+
+    process_raw_data(infile, outfile)

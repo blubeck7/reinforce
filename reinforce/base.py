@@ -434,18 +434,18 @@ class PolicyIF(abc.ABC):
     function over the possible actions from the state.
     """
 
-    @property
-    @abc.abstractmethod
-    def discount(self):
-        """
-        Returns the discount factor for the policy.
+    # @property
+    # @abc.abstractmethod
+    # def discount(self):
+        # """
+        # Returns the discount factor for the policy.
 
-        The discount factor is any real number between 0 and 1. For continual
-        FMDP that can possibly never terminate, the discount factor must be
-        strictly less than 1.
-        """
+        # The discount factor is any real number between 0 and 1. For continual
+        # FMDP that can possibly never terminate, the discount factor must be
+        # strictly less than 1.
+        # """
         
-        pass
+        # pass
     
     @abc.abstractmethod
     def list_actions(self, agent_key, state, fmdp):
@@ -464,6 +464,44 @@ class PolicyIF(abc.ABC):
 
         pass
 
+
+class DiscountPolicyIF(abc.ABC):
+    """
+    Declares the methods a discount policy object implements.
+
+    A discount policy is a policy that utilizes a di
+    function over the possible actions from the state.
+    """
+
+    # @property
+    # @abc.abstractmethod
+    # def discount(self):
+        # """
+        # Returns the discount factor for the policy.
+
+        # The discount factor is any real number between 0 and 1. For continual
+        # FMDP that can possibly never terminate, the discount factor must be
+        # strictly less than 1.
+        # """
+        
+        # pass
+    
+    @abc.abstractmethod
+    def list_actions(self, agent_key, state, fmdp):
+        """
+        Lists the possible actions with nonzero probability from a given state.
+
+        Params:
+            agent_key: int - the agent's key for the fmdp.
+            state: StateIF - a state object.
+            fmdp: FMDPIF - the FMDP from which the state object is.
+
+        Returns:
+            list[(ActionIF, float)] - a list where each element is an action,
+            probability pair for those actions with nonzero probability.
+        """
+
+        pass
 
 class LookupPolicy(PolicyIF):
     """

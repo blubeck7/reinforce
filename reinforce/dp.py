@@ -107,23 +107,6 @@ def lookup_state_value(state, state_value_pairs):
             return state_value[1]
 
 
-def mc_control(epsilon):
-        """
-        On-policy first-visit MC control.
-
-        This function implement on-policy first visit Monte Carlo control to
-        estimate the optimal episilon-greedy policy. See pg. 101 of
-        Introduction to Reinforcement Learning by Barto and Sutton.
-
-        Params:
-            episilon: float - a real number strictly greater than 0, which
-                determines how often the e-greedy policy takes the greedy
-                action or takes another action at random.
-        """
-        # Note that under the optimal policy, v(s) = max_{a in A(s)} q(s,a)
-        pass
-
-
 def mc_pred(policy, fmdp, max_episodes=500):
     """
     First-visit Monte Carlo prediction.
@@ -176,7 +159,7 @@ def add_returns(history, discount, state_returns):
             stats[2] = stats[0] / stats[1]
 
 
-def _first_time_episode(state, history, i):
+def _first_time_episode(state, history, step):
     """
     Returns true if this is the first time the state occurred in an episode.
 
@@ -184,9 +167,46 @@ def _first_time_episode(state, history, i):
         state: StateIF - the state to check.
         history: [[StateIF, ActionIF, float], ...] - a sequence of state,
             action, reward tuples.
+        step: int - the time step through which to check the history.
     """
 
-    return not any(map(lambda tup: tup[0] == state, history[:i]))
+    return not any(map(lambda tup: tup[0] == state, history[:step]))
+
+
+def mc_onpol_fvisit_control(epsilon):
+        """
+        On-policy first-visit MC control.
+
+        This function implement on-policy first visit Monte Carlo control to
+        estimate the optimal epsilon-greedy policy. See pg. 101 of
+        Introduction to Reinforcement Learning by Barto and Sutton.
+
+        Params:
+            epsilon: float - a real number strictly greater than 0, which
+                determines how often the policy takes the greedy action or
+                takes another action. 
+        """
+        # Note that under the optimal policy, v(s) = max_{a in A(s)} q(s,a)
+        pass
+
+
+def mc_onpol_fvisit_control_a(epsilon):
+        """
+        On-policy first-visit MC control with afterstates.
+
+        This function implement on-policy first visit Monte Carlo control to
+        estimate the optimal epsilon-greedy policy. See pg. 101 of
+        Introduction to Reinforcement Learning by Barto and Sutton.
+
+        Params:
+            epsilon: float - a real number strictly greater than 0, which
+                determines how often the policy takes the greedy action or
+                takes another action. 
+        """
+        # Note that under the optimal policy, v(s) = max_{a in A(s)} q(s,a)
+        pass
+
+
 
 
 # def append_returns(episode_returns, state_returns):
