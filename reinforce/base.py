@@ -426,27 +426,20 @@ class AgentIF(abc.ABC):
         pass
 
 
-class PolicyIF(abc.ABC):
+class NonLookAheadPolicyIF(abc.ABC):
     """
-    Declares the methods a policy object implements.
+    Declares the method a non-lookahead policy object implements.
 
-    A policy is a function that assigns a state to a conditional probability
-    function over the possible actions from the state.
-    """
-
-    # @property
-    # @abc.abstractmethod
-    # def discount(self):
-        # """
-        # Returns the discount factor for the policy.
-
-        # The discount factor is any real number between 0 and 1. For continual
-        # FMDP that can possibly never terminate, the discount factor must be
-        # strictly less than 1.
-        # """
+    A policy is any function that maps a state to a conditional probability
+    function over the possible actions from the state. Symbolically,
         
-        # pass
-    
+        for all s in S, policy(s) -> prob(a | s) for all a in A.
+
+    In the case of a non-lookahead policy, only the information from the current
+    state is used to determine the probability of taking each action.  In other
+    words, any information from looking-ahead to future states is not used.
+    """
+
     @abc.abstractmethod
     def list_actions(self, agent_key, state, fmdp):
         """
@@ -455,7 +448,7 @@ class PolicyIF(abc.ABC):
         Params:
             agent_key: int - the agent's key for the fmdp.
             state: StateIF - a state object.
-            fmdp: FMDPIF - the FMDP from which the state object is.
+            fmdp: FMDPIF - the FMDP from which the state object comes.
 
         Returns:
             list[(ActionIF, float)] - a list where each element is an action,
@@ -465,71 +458,135 @@ class PolicyIF(abc.ABC):
         pass
 
 
-class DiscountPolicyIF(abc.ABC):
+class TerminalLookAheadIF(abc.ABC):
     """
-    Declares the methods a discount policy object implements.
+    Declares the methods a terminal lookahead policy object implements.
 
-    A discount policy is a policy that utilizes a di
-    function over the possible actions from the state.
+    A lookahead policy is a policy that utilizes a discount factor and some
+    form of looking ahead to determine the specific probability for taking an
+    action from a given state. In the case of a complete, terminal FMDP, the
+    discount factor can be any real number in the interval [0,1] and the FMDP's
+    dynamics, p(s', r|s, a) must be known.
     """
-
-    # @property
-    # @abc.abstractmethod
-    # def discount(self):
-        # """
-        # Returns the discount factor for the policy.
-
-        # The discount factor is any real number between 0 and 1. For continual
-        # FMDP that can possibly never terminate, the discount factor must be
-        # strictly less than 1.
-        # """
-        
-        # pass
-    
-    @abc.abstractmethod
-    def list_actions(self, agent_key, state, fmdp):
-        """
-        Lists the possible actions with nonzero probability from a given state.
-
-        Params:
-            agent_key: int - the agent's key for the fmdp.
-            state: StateIF - a state object.
-            fmdp: FMDPIF - the FMDP from which the state object is.
-
-        Returns:
-            list[(ActionIF, float)] - a list where each element is an action,
-            probability pair for those actions with nonzero probability.
-        """
-
-        pass
-
-class LookupPolicy(PolicyIF):
-    """
-    Defines a lookup policy.
-
-    A lookup policy is a policy that uses a lookup table to determine the
-    action to take from a state. The lookup up table is an exhaustive
-    enumeration of all the possible states.
-    """
-
-    def __init__(self, state_actions, discount=1):
-        """
-        Initializes the lookup policy.
-
-        Params:
-            state_actions: list[StateIF, list[(ActionIF, float)] - a list where
-                the first element is a state and the second element is a list
-                of all the possible actions with nonzero probability.
-        """
-
-        self._state_actions = state_actions
-        self._discount = discount
 
     @property
+    @abc.abstractmethod
     def discount(self):
-        return self._discount
+        """
+        Returns the discount factor for the policy.
+        """
+        
+        pass
 
+    @abc.abstractmethod
+    def set_discount(self):
+        """
+        Sets the discount factor for the policy.
+        """
+        
+        pass
+
+    @abc.abstractmethod
     def list_actions(self, agent_key, state, fmdp):
-        for state_action in self._state_actions:
-            if state == state_action[0]:
-                return state_action[1]
+        """
+        Lists the possible actions with nonzero probability from a given state.
+
+        Params:
+            agent_key: int - the agent's key for the fmdp.
+            state: StateIF - a state object.
+            fmdp: CompleteTerminalFMDPIF - the complete, terminal FMDP from
+                which the state object comes.
+
+        Returns:
+            list[(ActionIF, float)] - a list where each element is an action,
+            probability pair for those actions with nonzero probability.
+        """
+
+        pass
+
+
+class ContinualLookAheadPolicyIF(abc.ABC):
+    """
+    Declares the methods a continual lookahead policy object implements.
+
+    A lookahead policy is a policy that utilizes a discount factor and some
+    form of looking ahead to determine the specific probability for taking an
+    action from a given state. In the case of a complete, continual FMDP, the
+    discount factor can be any real number in the interval [0,1). In
+    otherwords, one is not allowed so that the sum of all the discounted future
+    rewards is finite. In addition, the FMDP's dynamics, p(s', r|s, a) must be
+    known.
+    """
+
+    @property
+    @abc.abstractmethod
+    def discount(self):
+        """
+        Returns the discount factor for the policy.
+        """
+        
+        pass
+
+    @abc.abstractmethod
+    def set_discount(self):
+        """
+        Sets the discount factor for the policy.
+        """
+        
+        pass
+
+    @abc.abstractmethod
+    def list_actions(self, agent_key, state, fmdp):
+        """
+        Lists the possible actions with nonzero probability from a given state.
+
+        Params:
+            agent_key: int - the agent's key for the fmdp.
+            state: StateIF - a state object.
+            fmdp: CompleteContinualFMDPIF - the complete, continual FMDP fro,
+                which the state object comes.
+
+        Returns:
+            list[(ActionIF, float)] - a list where each element is an action,
+            probability pair for those actions with nonzero probability.
+        """
+
+        pass
+
+
+
+
+
+
+
+
+# class LookupPolicy(PolicyIF):
+    # """
+    # Defines a lookup policy.
+
+    # A lookup policy is a policy that uses a lookup table to determine the
+    # action to take from a state. The lookup up table is an exhaustive
+    # enumeration of all the possible states.
+    # """
+
+    # def __init__(self, state_actions, discount=1):
+        # """
+        # Initializes the lookup policy.
+
+        # Params:
+            # state_actions: list[StateIF, list[(ActionIF, float)] - a list where
+                # the first element is a state and the second element is a list
+                # of all the possible actions with nonzero probability.
+        # """
+
+        # self._state_actions = state_actions
+        # self._discount = discount
+
+    # @property
+    # def discount(self):
+        # return self._discount
+
+    # def list_actions(self, agent_key, state, fmdp):
+        # for state_action in self._state_actions:
+            # if state == state_action[0]:
+                # return state_action[1]
