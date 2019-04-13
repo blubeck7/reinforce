@@ -34,11 +34,16 @@ int set_key(Agent *agent, key):
 Policy *get_policy(Agent *agent):
 int set_policy(Agent *agent, Policy *policy);
 */
-int list_moves(Agent *agent, Chess *game, state, move moves[]):
-int select(Agent *agent, Chess *game, state, char *move):
+//int list_moves(Agent *agent, Chess *game, state, move moves[]);
+//int select(Agent *agent, Chess *game, state, char *move);
 
 
 /* Chess class methods */
+int init_game(void);
+int reset_game(void);
+int run_game(Agent *white, Agent *black);
+
+/*
 Chess *create(void);
 int destroy(Chess *game);
 Agent *get_agent(Chess * game);
@@ -49,6 +54,7 @@ int run(Chess *game);
 int reset(Chess *game);
 Move *list_moves(Chess *game, int key, Board *board);
 Episode *get_episode(Chess *game);
+*/
 
 
 
