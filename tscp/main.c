@@ -33,8 +33,11 @@ int get_ms()
 /* main() is basically an infinite loop that either calls
    think() when it's the computer's turn to move or prompts
    the user for a command (and deciphers it). */
+/* Modified from main to loop so main in this file does not conflict with main
+ * in chess.c
+ */
 
-int main()
+int loop()
 {
 	int computer_side;
 	char s[256];
