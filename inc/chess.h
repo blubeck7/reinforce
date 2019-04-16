@@ -11,42 +11,39 @@
 #define CHESS_H
 
 
-#include "../tscp/defs.h"
-#include "../tscp/data.h"
-#include "../tscp/protos.h"
+#define MAX_MOVES 550
+#define MAX_MOVES_TURN 320
 
 
 enum colors {WHITE, BLACK};
 
 
-typedef struct chess_t Chess;
 typedef struct move_t Move;
+typedef struct board_t Board;
+typedef struct chess_t Chess;
 typedef struct player_t Player;
-
+typedef int Move_func(Chess *game, char *move);
 
 /* Chess functions */
-//int init_game(void);
 //int reset_game(void);
-Chess *create(void);
-int run(Chess *game);
+Chess *create_game(void);
+int *destroy_game(Chess *game);
+int display_board(Chess *game);
+int display_info(Chess *game);
+int display_moves(Chess *game);
+Move *list_moves(Chess *game, Board *board, int *n);
+int run_game(Chess *game);
 /*
-int destroy(Chess *game);
-Agent *get_agent(Chess * game);
-int set_agent(Chess * game, Agent *agent, int key);
-Agent *get_comp(Chess * game);
-int set_comp(Chess * game, Agent *comp, int key);
-int run(Chess *game);
 int reset(Chess *game);
-Move *list_moves(Chess *game, int key, Board *board);
-Episode *get_episode(Chess *game);
 */
 
 
 /* Player functions */
 Player *create_player(char *name, enum colors color,
-					  int (*get_move) (Chess *game, Move *move));
+					  int (*get_move) (Chess *game, char *move));
 int *destroy_player(Player *player);
 int display_player(Player *player);
+int user_move(Chess *game, char *move);
 
 
 #endif

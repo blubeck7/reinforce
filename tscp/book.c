@@ -26,7 +26,7 @@ FILE *book_file;
 void open_book()
 {
 	srand(time(NULL));
-	book_file = fopen("book.txt", "r");
+	book_file = fopen("./tscp/book.txt", "r");
 	if (!book_file)
 		printf("Opening book missing.\n");
 }
