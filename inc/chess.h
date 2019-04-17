@@ -15,14 +15,13 @@
 #define MAX_MOVES_TURN 320
 
 
-enum colors {WHITE, BLACK};
-
-
+typedef struct piece_t Piece;
 typedef struct move_t Move;
 typedef struct board_t Board;
 typedef struct chess_t Chess;
 typedef struct player_t Player;
 typedef int Move_func(Chess *game, char *move);
+
 
 /* Chess functions */
 //int reset_game(void);
@@ -39,7 +38,7 @@ int reset(Chess *game);
 
 
 /* Player functions */
-Player *create_player(char *name, enum colors color,
+Player *create_player(char *name, int color,
 					  int (*get_move) (Chess *game, char *move));
 int *destroy_player(Player *player);
 int display_player(Player *player);
