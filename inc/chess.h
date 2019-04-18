@@ -15,7 +15,6 @@
 #define MAX_MOVES_TURN 320
 
 
-typedef struct piece_t Piece;
 typedef struct move_t Move;
 typedef struct board_t Board;
 typedef struct chess_t Chess;
@@ -29,10 +28,13 @@ Chess *create_game(void);
 int *destroy_game(Chess *game);
 int display_board(Chess *game);
 int display_info(Chess *game);
-int display_moves(Chess *game);
-Move *list_moves(Chess *game, Board *board, int *n);
+Move *list_moves(Chess *game, int *n);
+int make_move(Chess *game, Move *move);
+int undo_move(Chess *game);
+int display_move(Move *move);
 int run_game(Chess *game);
 /*
+int history()
 int reset(Chess *game);
 */
 
@@ -45,4 +47,5 @@ int display_player(Player *player);
 int user_move(Chess *game, char *move);
 
 
+//int display_moves(Chess *game);
 #endif

@@ -1,3 +1,4 @@
+// TODO: Profile code and measure the performance.
 /* This file implements the chess functionality for two agents to play against
  * each other. Tom Kerrigan's simple chess program is used to implement the
  * functionality. Names in this files are sometimes prefixed c to avoid name
@@ -7,14 +8,191 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "../tscp/defs.h"
-#include "../tscp/data.h"
-#include "../tscp/protos.h"
 #include "../inc/chess.h"
 
 
+#define CBOOL			int
+#define CTRUE			1
+#define CFALSE			0
+
+#define CGEN_STACK		1120
+#define CMAX_PLY		32
+#define CHIST_STACK		400
+
+#define CLIGHT			0
+#define CDARK			1
+
+#define CPAWN			0
+#define CKNIGHT			1
+#define CBISHOP			2
+#define CROOK			3
+#define CQUEEN			4
+#define CKING			5
+
+#define CEMPTY			6
+
+/* useful squares */
+#define CA1				56
+#define CB1				57
+#define CC1				58
+#define CD1				59
+#define CE1				60
+#define CF1				61
+#define CG1				62
+#define CH1				63
+#define CA8				0
+#define CB8				1
+#define CC8				2
+#define CD8				3
+#define CE8				4
+#define CF8				5
+#define CG8				6
+#define CH8				7
+
+#define CROW(x)			(x >> 3)
+#define CCOL(x)			(x & 7)
+
+/* Constants */
+/* Now we have the mailbox array, so called because it looks like a
+   mailbox, at least according to Bob Hyatt. This is useful when we
+   need to figure out what pieces can go where. Let's say we have a
+   rook on square a4 (32) and we want to know if it can move one
+   square to the left. We subtract 1, and we get 31 (h5). The rook
+   obviously can't move to h5, but we don't know that without doing
+   a lot of annoying work. Sooooo, what we do is figure out a4's
+   mailbox number, which is 61. Then we subtract 1 from 61 (60) and
+   see what mailbox[60] is. In this case, it's -1, so it's out of
+   bounds and we can forget it. You can see how mailbox[] is used
+   in attack() in board.c. */
+
+int CMAILBOX[120] = {
+	 -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+	 -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+	 -1,  0,  1,  2,  3,  4,  5,  6,  7, -1,
+	 -1,  8,  9, 10, 11, 12, 13, 14, 15, -1,
+	 -1, 16, 17, 18, 19, 20, 21, 22, 23, -1,
+	 -1, 24, 25, 26, 27, 28, 29, 30, 31, -1,
+	 -1, 32, 33, 34, 35, 36, 37, 38, 39, -1,
+	 -1, 40, 41, 42, 43, 44, 45, 46, 47, -1,
+	 -1, 48, 49, 50, 51, 52, 53, 54, 55, -1,
+	 -1, 56, 57, 58, 59, 60, 61, 62, 63, -1,
+	 -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+	 -1, -1, -1, -1, -1, -1, -1, -1, -1, -1
+};
+
+int CMAILBOX64[64] = {
+	21, 22, 23, 24, 25, 26, 27, 28,
+	31, 32, 33, 34, 35, 36, 37, 38,
+	41, 42, 43, 44, 45, 46, 47, 48,
+	51, 52, 53, 54, 55, 56, 57, 58,
+	61, 62, 63, 64, 65, 66, 67, 68,
+	71, 72, 73, 74, 75, 76, 77, 78,
+	81, 82, 83, 84, 85, 86, 87, 88,
+	91, 92, 93, 94, 95, 96, 97, 98
+};
+
+/* slide, offsets, and offset are basically the vectors that
+   pieces can move in. If slide for the piece is FALSE, it can
+   only move one square in any one direction. offsets is the
+   number of directions it can move in, and offset is an array
+   of the actual directions. */
+
+CBOOL CSLIDE[6] = {
+	CFALSE, CFALSE, CTRUE, CTRUE, CTRUE, CFALSE
+};
+
+int COFFSETS[6] = {
+	0, 8, 4, 4, 8, 8
+};
+
+int COFFSET[6][8] = {
+	{ 0, 0, 0, 0, 0, 0, 0, 0 },
+	{ -21, -19, -12, -8, 8, 12, 19, 21 },
+	{ -11, -9, 9, 11, 0, 0, 0, 0 },
+	{ -10, -1, 1, 10, 0, 0, 0, 0 },
+	{ -11, -10, -9, -1, 1, 9, 10, 11 },
+	{ -11, -10, -9, -1, 1, 9, 10, 11 }
+};
+
+char CPIECE_CHAR[6] = {
+	'P', 'N', 'B', 'R', 'Q', 'K'
+};
+
+/* initial board state */
+
+int CINIT_COLOR[64] = {
+	1, 1, 1, 1, 1, 1, 1, 1,
+	1, 1, 1, 1, 1, 1, 1, 1,
+	6, 6, 6, 6, 6, 6, 6, 6,
+	6, 6, 6, 6, 6, 6, 6, 6,
+	6, 6, 6, 6, 6, 6, 6, 6,
+	6, 6, 6, 6, 6, 6, 6, 6,
+	0, 0, 0, 0, 0, 0, 0, 0,
+	0, 0, 0, 0, 0, 0, 0, 0
+};
+
+int CINIT_PIECE[64] = {
+	3, 1, 2, 4, 5, 2, 1, 3,
+	0, 0, 0, 0, 0, 0, 0, 0,
+	6, 6, 6, 6, 6, 6, 6, 6,
+	6, 6, 6, 6, 6, 6, 6, 6,
+	6, 6, 6, 6, 6, 6, 6, 6,
+	6, 6, 6, 6, 6, 6, 6, 6,
+	0, 0, 0, 0, 0, 0, 0, 0,
+	3, 1, 2, 4, 5, 2, 1, 3
+};
+
+
+/* This is the basic description of a move. promote is what
+   piece to promote the pawn to, if the move is a pawn
+   promotion. bits is a bitfield that describes the move,
+   with the following bits:
+
+   1	capture
+   2	castle
+   4	en passant capture
+   8	pushing a pawn 2 squares
+   16	pawn move
+   32	promote
+
+   It's union'ed with an integer so two moves can easily
+   be compared with each other. */
+
+typedef struct {
+	char from;
+	char to;
+	char promote;
+	char bits;
+} cmove_bytes;
+
+
+typedef union {
+	cmove_bytes b;
+	int u;
+} cmove;
+
+
+/* an element of the move stack. it's just a move with a
+   score, so it can be sorted by the search functions. */
+typedef struct {
+	cmove m;
+	int score;
+} cgen_t;
+
+/* an element of the history stack, with the information
+   necessary to take a move back. */
+typedef struct {
+	cmove m;
+	int capture;
+	int castle;
+	int ep;
+	int fifty;
+	int hash;
+} chist_t;
+
+
 struct move_t {
-	move tscp_move; //see defs.h in tscp/
+	cmove tscp_move;
 	char move_str[6];
 };
 
@@ -47,8 +225,11 @@ struct chess_t {
 	int hply;  /* the number of ply since the beginning of the game */
 
 	/* move variables */
-	gen_t gen_dat[GEN_STACK]; /* space for moves generated by move functions */
-	int first_move[MAX_PLY]; /* first_move[n] to first_move[n+1], excluding */
+	cgen_t gen_dat[CGEN_STACK]; /* space for moves generated by move functions */
+	int first_move[CMAX_PLY]; /* first_move[n] to first_move[n+1], excluding */
+
+	/* tscp history */
+	int history[64][64];
 
 	Player *white;
 	Player *black;
@@ -56,7 +237,9 @@ struct chess_t {
 	Board white_board[MAX_MOVES];
 	char black_move[MAX_MOVES][6];
 	Board black_board[MAX_MOVES];
-	Move move[MAX_MOVES_TURN];
+
+	int num_moves;
+	Move move_list[MAX_MOVES_TURN];
 	int turn; 
 	int result;
 };
@@ -78,6 +261,9 @@ static int cset_hash(Chess *game);
 static int cinit_board(Chess *game);
 /* chess prototypes */
 static int cgen(Chess *game);
+static int cgen_push(Chess *game, int from, int to, int bits);
+static int cgen_promote(Chess *game, int from, int to, int bits);
+static char *cmove_str(cmove_bytes m);
 
 
 /* Hash functions */
@@ -131,24 +317,28 @@ static int chash_rand()
  * repetitions of the position). 
  * The way it works is to XOR random numbers that correspond to features of
  * the position, e.g., if there's a black knight on B8, hash is XORed with
- * hash_piece[BLACK][KNIGHT][B8]. All of the pieces are XORed together,
+ * hash_piece[BLACK][CKNIGHT][B8]. All of the pieces are XORed together,
  * hash_side is XORed if it's black's move, and the en passant square is
  * XORed if there is one. (A chess technicality is that one position can't
  * be a repetition of another if the en passant state is different.)
+ *
+ * Note that this function generates the hash for the current board position.
  */
 
 static int cset_hash(Chess *game)
 {
-	int i;
+	int i, hash;
 
-	game->hash = 0;
+	hash = 0;
 	for (i = 0; i < 64; ++i)
-		if (game->color[i] != EMPTY)
-			game->hash ^= game->hash_piece[color[i]][game->piece[i]][i];
-	if (game->side == DARK)
-		game->hash ^= game->hash_side;
+		if (game->color[i] != CEMPTY)
+			hash ^= game->hash_piece[game->color[i]][game->piece[i]][i];
+	if (game->side == CDARK)
+		hash ^= game->hash_side;
 	if (game->ep != -1)
-		game->hash ^= game->hash_ep[game->ep];
+		hash ^= game->hash_ep[game->ep];
+
+	game->hash = hash;
 
 	return 0;
 }
@@ -165,11 +355,11 @@ static int cinit_board(Chess *game)
 	int i;
 
 	for (i = 0; i < 64; ++i) {
-		game->color[i] = init_color[i];
-		game->piece[i] = init_piece[i];
+		game->color[i] = CINIT_COLOR[i];
+		game->piece[i] = CINIT_PIECE[i];
 	}
-	game->side = LIGHT;
-	game->xside = DARK;
+	game->side = CLIGHT;
+	game->xside = CDARK;
 	game->castle = 15;
 	game->ep = -1;
 	game->fifty = 0;
@@ -218,18 +408,18 @@ int display_board(Chess *game)
 	printf("\n8 ");
 	for (i = 0; i < 64; ++i) {
 		switch (game->color[i]) {
-			case EMPTY:
+			case CEMPTY:
 				printf(" .");
 				break;
-			case LIGHT:
-				printf(" %c", piece_char[game->piece[i]]);
+			case CLIGHT:
+				printf(" %c", CPIECE_CHAR[game->piece[i]]);
 				break;
-			case DARK:
-				printf(" %c", piece_char[game->piece[i]] + ('a' - 'A'));
+			case CDARK:
+				printf(" %c", CPIECE_CHAR[game->piece[i]] + ('a' - 'A'));
 				break;
 		}
 		if ((i + 1) % 8 == 0 && i != 63)
-			printf("\n%d ", 7 - ROW(i));
+			printf("\n%d ", 7 - CROW(i));
 	}
 	printf("\n\n   a b c d e f g h\n\n");
 
@@ -239,7 +429,7 @@ int display_board(Chess *game)
 int display_info(Chess *game)
 {
 	printf("Turn: %d\n", game->turn);
-	if (game->side == LIGHT) {
+	if (game->side == CLIGHT) {
 		printf("White's turn to move.\n");
 		printf("The previous move was %s.\n", game->black_move[game->turn]);
 	} else {
@@ -250,30 +440,53 @@ int display_info(Chess *game)
 	return 0;
 }
 
+/*
 int display_moves(Chess *game)
 {
 	int i;
 
-	for (i = 1; i < game->turn; i++)
-		printf("%d. %s %s\n", i, game->white_move[i], game->black_move[i]);
+	for (i = 0; i < game->num_moves - 1; i++)
+		printf("%s ", game->move_list[i].move_str);
+	printf("%s\n", game->move_list[i].move_str);
+
+	return 0;
+}
+*/
+
+int display_move(Move *move)
+{
+	printf("%s\n", move->move_str);
 
 	return 0;
 }
 
-Move *list_moves(Chess *game, Board *board, int *n)
+
+Move *list_moves(Chess *game, int *n)
 {
-	int n_moves;
+	int i, first_move, last_move;
 
 	/* gen is a tscp function. It generates pseudo-legal moves and saves them
 	 * to the global array gen_dat and modifies first_move[ply+1] to count the
 	 * number of moves and track the moves indices in gen_dat.
 	 */
-	gen(); 
-	n_moves = first_move[ply + 1] - first_move[ply];
-	printf("n moves %d.\n", n_moves);
-	//g = &gen_dat[first_move[ply + 1]++];
-	// copy from tscp global variable ... to struct chess_t array of moves.
-	return NULL;
+
+	cgen(game); 
+	first_move = game->first_move[game->ply];
+	last_move = game->first_move[game->ply + 1]; //exclusive i.e. < in loops
+	for (i = first_move; i < last_move; i++) {
+		game->move_list[i - first_move].tscp_move = game->gen_dat[i].m;
+		strcpy(game->move_list[i - first_move].move_str,
+			   cmove_str(game->gen_dat[i].m.b));
+	}
+
+	game->num_moves = last_move - first_move;
+	if (game->num_moves <= 0) {
+		*n = 0;
+		return NULL;
+	}
+
+	*n = game->num_moves;
+	return game->move_list;
 }
 
 
@@ -289,81 +502,87 @@ Move *list_moves(Chess *game, Board *board, int *n)
 
 static int cgen(Chess *game)
 {
-	int i, j, n;
+	int i, j, n, ep;
 
 	/* so far, we have no moves for the current ply */
-	first_move[ply + 1] = first_move[ply];
+	game->first_move[game->ply + 1] = game->first_move[game->ply];
 
 	for (i = 0; i < 64; ++i)
 		if (game->color[i] == game->side) {
-			if (game->piece[i] == PAWN) {
-				if (game->side == LIGHT) {
-					if (COL(i) != 0 && game->color[i - 9] == DARK)
+			if (game->piece[i] == CPAWN) {
+				if (game->side == CLIGHT) {
+					if (CCOL(i) != 0 && game->color[i - 9] == CDARK)
 						cgen_push(game, i, i - 9, 17);
-					if (COL(i) != 7 && game->color[i - 7] == DARK)
+					if (CCOL(i) != 7 && game->color[i - 7] == CDARK)
 						cgen_push(game, i, i - 7, 17);
-					if (color[i - 8] == EMPTY) {
+					if (game->color[i - 8] == CEMPTY) {
 						cgen_push(game, i, i - 8, 16);
-						if (i >= 48 && game->color[i - 16] == EMPTY)
+						if (i >= 48 && game->color[i - 16] == CEMPTY)
 							cgen_push(game, i, i - 16, 24);
 					}
 				}
 				else {
-					if (COL(i) != 0 && game->color[i + 7] == LIGHT)
+					if (CCOL(i) != 0 && game->color[i + 7] == CLIGHT)
 						cgen_push(game, i, i + 7, 17);
-					if (COL(i) != 7 && game->color[i + 9] == LIGHT)
+					if (CCOL(i) != 7 && game->color[i + 9] == CLIGHT)
 						cgen_push(game, i, i + 9, 17);
-					if (game->color[i + 8] == EMPTY) {
+					if (game->color[i + 8] == CEMPTY) {
 						cgen_push(game, i, i + 8, 16);
-						if (i <= 15 && game->color[i + 16] == EMPTY)
+						if (i <= 15 && game->color[i + 16] == CEMPTY)
 							cgen_push(game, i, i + 16, 24);
 					}
 				}
 			}
 			else
-				for (j = 0; j < offsets[game->piece[i]]; ++j)
+				for (j = 0; j < COFFSETS[game->piece[i]]; ++j)
 					for (n = i;;) {
-						n = mailbox[mailbox64[n] + offset[game->piece[i]][j]];
+						n = CMAILBOX[CMAILBOX64[n] + 
+							COFFSET[game->piece[i]][j]];
 						if (n == -1)
 							break;
-						if (game->color[n] != EMPTY) {
+						if (game->color[n] != CEMPTY) {
 							if (game->color[n] == game->xside)
 								cgen_push(game, i, n, 1);
 							break;
 						}
 						cgen_push(game, i, n, 0);
-						if (!slide[game->piece[i]])
+						if (!CSLIDE[game->piece[i]])
 							break;
 					}
 		}
 
 	/* generate castle moves */
-	if (game->side == LIGHT) {
+	if (game->side == CLIGHT) {
 		if (game->castle & 1)
-			cgen_push(game, E1, G1, 2);
+			cgen_push(game, CE1, CG1, 2);
 		if (game->castle & 2)
-			cgen_push(game, E1, C1, 2);
+			cgen_push(game, CE1, CC1, 2);
 	}
 	else {
 		if (game->castle & 4)
-			cgen_push(game, E8, G8, 2);
+			cgen_push(game, CE8, CG8, 2);
 		if (game->castle & 8)
-			cgen_push(game, E8, C8, 2);
+			cgen_push(game, CE8, CC8, 2);
 	}
 	
 	/* generate en passant moves */
-	if (game->ep != -1) {
-		if (game->side == LIGHT) {
-			if (COL(game->ep) != 0 && game->color[game->ep + 7] == LIGHT && game->piece[game->ep + 7] == PAWN)
-				cgen_push(game, game->ep + 7, game->ep, 21);
-			if (COL(game->ep) != 7 && color[game->ep + 9] == LIGHT && piece[game->ep + 9] == PAWN)
-				cgen_push(game, game->ep + 9, game->ep, 21);
+	ep = game->ep;
+	if (ep != -1) {
+		if (game->side == CLIGHT) {
+			if (CCOL(ep) != 0 && game->color[ep + 7] == CLIGHT &&
+				game->piece[ep + 7] == CPAWN)
+				cgen_push(game, ep + 7, ep, 21);
+			if (CCOL(ep) != 7 && game->color[ep + 9] == CLIGHT &&
+				game->piece[ep + 9] == CPAWN)
+				cgen_push(game, ep + 9, ep, 21);
 		}
 		else {
-			if (COL(game->ep) != 0 && game->color[game->ep - 9] == DARK && game->piece[game->ep - 9] == PAWN)
-				cgen_push(game, game->ep - 9, game->ep, 21);
-			if (COL(game->ep) != 7 && game->color[game->ep - 7] == DARK && game->piece[game->ep - 7] == PAWN)
-				cgen_push(game, game->ep - 7, game->ep, 21);
+			if (CCOL(ep) != 0 && game->color[ep - 9] == CDARK &&
+				game->piece[ep - 9] == CPAWN)
+				cgen_push(game, ep - 9, ep, 21);
+			if (CCOL(ep) != 7 && game->color[ep - 7] == CDARK &&
+				game->piece[ep - 7] == CPAWN)
+				cgen_push(game, ep - 7, ep, 21);
 		}
 	}
 
@@ -371,43 +590,112 @@ static int cgen(Chess *game)
 }
 
 
-/* cgen_push() puts a move on the move stack, unless it's a
-   pawn promotion that needs to be handled by gen_promote().
-   It also assigns a score to the move for alpha-beta move
-   ordering. If the move is a capture, it uses MVV/LVA
-   (Most Valuable Victim/Least Valuable Attacker). Otherwise,
-   it uses the move's history heuristic value. Note that
-   1,000,000 is added to a capture move's score, so it
-   always gets ordered above a "normal" move. */
+/* cgen_push()
+ *
+ * This function puts a move on the move stack, unless it's a pawn promotion
+ * that needs to be handled by gen_promote(). It also assigns a score to the
+ * move for alpha-beta move ordering. If the move is a capture, it uses MVV/LVA
+ * (Most Valuable Victim/Least Valuable Attacker). Otherwise, it uses the
+ * move's history heuristic value. Note that 1,000,000 is added to a capture
+ * move's score, so it always gets ordered above a "normal" move.
+ */
 
 static int cgen_push(Chess *game, int from, int to, int bits)
 {
-	gen_t *g;
+	cgen_t *g;
 	
 	if (bits & 16) {
-		if (game->side == LIGHT) {
-			if (to <= H8) {
+		if (game->side == CLIGHT) {
+			if (to <= CH8) {
 				cgen_promote(game, from, to, bits);
-				return;
+				return 0;
 			}
 		}
 		else {
-			if (to >= A1) {
+			if (to >= CA1) {
 				cgen_promote(game, from, to, bits);
-				return;
+				return 0;
 			}
 		}
 	}
-	g = &gen_dat[first_move[ply + 1]++];
+	g = &(game->gen_dat[game->first_move[game->ply + 1]++]);
 	g->m.b.from = (char)from;
 	g->m.b.to = (char)to;
 	g->m.b.promote = 0;
 	g->m.b.bits = (char)bits;
-	if (color[to] != EMPTY)
-		g->score = 1000000 + (piece[to] * 10) - piece[from];
+	if (game->color[to] != CEMPTY)
+		g->score = 1000000 + (game->piece[to] * 10) - game->piece[from];
 	else
-		g->score = history[from][to];
+		g->score = game->history[from][to];
+
+	return 0;
 }
+
+
+/* cgen_promote
+ *
+ * This function is just like gen_push(), only it puts 4 moves on the move
+ * stack, one for each possible promotion piece
+ */
+
+static int cgen_promote(Chess *game, int from, int to, int bits)
+{
+	int i;
+	cgen_t *g;
+	
+	for (i = CKNIGHT; i <= CQUEEN; ++i) {
+		g = &(game->gen_dat[game->first_move[game->ply + 1]++]);
+		g->m.b.from = (char)from;
+		g->m.b.to = (char)to;
+		g->m.b.promote = (char)i;
+		g->m.b.bits = (char)(bits | 32);
+		g->score = 1000000 + (i * 10);
+	}
+
+	return 0;
+}
+
+
+/* move_str returns a string with move m in coordinate notation */
+
+static char *cmove_str(cmove_bytes m)
+{
+	static char str[6];
+
+	char c;
+
+	if (m.bits & 32) {
+		switch (m.promote) {
+			case CKNIGHT:
+				c = 'n';
+				break;
+			case CBISHOP:
+				c = 'b';
+				break;
+			case CROOK:
+				c = 'r';
+				break;
+			default:
+				c = 'q';
+				break;
+		}
+		sprintf(str, "%c%d%c%d%c",
+				CCOL(m.from) + 'a',
+				8 - CROW(m.from),
+				CCOL(m.to) + 'a',
+				8 - CROW(m.to),
+				c);
+	}
+	else
+		sprintf(str, "%c%d%c%d",
+				CCOL(m.from) + 'a',
+				8 - CROW(m.from),
+				CCOL(m.to) + 'a',
+				8 - CROW(m.to));
+	return str;
+}
+
+
 int run_game(Chess *game)
 {
 	return 0;
@@ -440,7 +728,7 @@ int *destroy_player(Player *player)
 
 int display_player(Player *player)
 {
-	if (player->color == LIGHT)
+	if (player->color == CLIGHT)
 		printf("%s is white.\n", player->name);
 	else
 		printf("%s is black.\n", player->name);

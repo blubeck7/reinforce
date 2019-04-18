@@ -1,4 +1,5 @@
 #include <stdio.h> 
+#include <string.h> 
 #include "../tscp/defs.h"
 #include "../tscp/data.h"
 #include "../tscp/protos.h"
@@ -6,6 +7,7 @@
 
 
 /* prototypes */
+int test_hash(void);
 int test_moves(void);
 
 
@@ -24,13 +26,28 @@ int main(int argc, char *argv[])
 	//display_player(black);
 
 	//list_moves(game, NULL, &n);
-	test_moves();
+	if (argc > 1 && strcmp(argv[1], "-test") == 0) {
+		printf("Running tests...\n");	
+		test_hash();
+		//test_moves();
+	}
 
 	destroy_game(game);
 
 	return 0;
 }
 
+
+int test_hash(void)
+{
+	Chess *game;
+	game = create_game();
+	init_hash();
+
+	printf("TSCP hash_piece: %d\n", hash_piece[0][0][0]);
+	printf("Chess hash_piece: %d\n", game->hash_piece[0][0][0]);
+
+	return 0;
 
 int test_moves(void)
 {

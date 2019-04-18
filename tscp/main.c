@@ -37,7 +37,7 @@ int get_ms()
  * in chess.c
  */
 
-int loop()
+int loop(void)
 {
 	int computer_side;
 	char s[256];
