@@ -88,37 +88,34 @@ int test_moves(void)
 {
 	Chess *game;
 	Move *moves;
-	int i, n;
+	int i, n, cnt = 0;
 
 	game = create_game();
 	init_hash();
 	init_board();
 
+	/* chess move function */
 	moves = list_moves(game, &n);
-	moves = list_moves(game, &n);
-	moves = list_moves(game, &n);
-	printf("There are %d pseudo-legal moves.\n", n);
-	for (i = 0; i < n; i++)
-		display_move(moves + i);
-	//display_moves(game);
-	destroy_game(game);
-
-	/*
-	int i;
-	move move;
-
-	init_hash();
-	init_board();
+	/* tscp move function */
 	gen();
-	printf("Ply is %d\n", ply);
-	printf("En passant is %d\n", ep);
-	printf("First move is %d to %d\n", first_move[ply], first_move[ply + 1]);
-
 	for (i = first_move[ply]; i < first_move[ply + 1]; i++) {
-		move = gen_dat[i].m;
-		printf("%s\n", move_str(move.b));
+		/*
+		printf("Chess move - %s, tscp move - %s\n",
+			(*(moves + (i - first_move[ply]))).move_str,
+			move_str(gen_dat[i].m.b));
+		*/
+
+		if (strcmp((*(moves + (i - first_move[ply]))).move_str,
+				   move_str(gen_dat[i].m.b)) != 0)
+			cnt += 1;
 	}
-	*/
+
+	if (cnt == 0)
+		printf("test moves succeeded!\n");
+	else
+		printf("test moves failed!\n");
+
+	destroy_game(game);
 
 	return 0;
 }
