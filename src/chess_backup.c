@@ -94,6 +94,26 @@ int CMAILBOX64[64] = {
 	91, 92, 93, 94, 95, 96, 97, 98
 };
 
+/* This is the castle_mask array. We can use it to determine
+   the castling permissions after a move. What we do is
+   logical-AND the castle bits with the castle_mask bits for
+   both of the move's squares. Let's say castle is 1, meaning
+   that white can still castle kingside. Now we play a move
+   where the rook on h1 gets captured. We AND castle with
+   castle_mask[63], so we have 1&14, and castle becomes 0 and
+   white can't castle kingside anymore. */
+
+int CCASTLE_MASK[64] = {
+	 7, 15, 15, 15,  3, 15, 15, 11,
+	15, 15, 15, 15, 15, 15, 15, 15,
+	15, 15, 15, 15, 15, 15, 15, 15,
+	15, 15, 15, 15, 15, 15, 15, 15,
+	15, 15, 15, 15, 15, 15, 15, 15,
+	15, 15, 15, 15, 15, 15, 15, 15,
+	15, 15, 15, 15, 15, 15, 15, 15,
+	13, 15, 15, 15, 12, 15, 15, 14
+};
+
 /* slide, offsets, and offset are basically the vectors that
    pieces can move in. If slide for the piece is FALSE, it can
    only move one square in any one direction. offsets is the
@@ -236,6 +256,7 @@ struct chess_t {
 
 	/* tscp history */
 	int history[64][64];
+	chist_t hist_dat[CHIST_STACK];
 
 	Player *white;
 	Player *black;
@@ -273,6 +294,7 @@ static CBOOL cmakemove(Chess *game, move_bytes m);
 static CBOOL cattack(Chess *game, int sq, int s)
 static BOOL cin_check(Chess *game, int s)
 static char *cmove_str(cmove_bytes m);
+CBOOL cin_check(Chess *game, int s)
 
 
 /* Hash functions */
@@ -713,7 +735,7 @@ int make_move(Chess *game, Move *move)
 /* cmakemove() makes a move. If the move is illegal, it
    undoes whatever it did and returns FALSE. Otherwise, it
    returns TRUE. */
-static CBOOL cmakemove(move_bytes m)
+static CBOOL cmakemove(game, move_bytes m)
 {
 	
 	/* test to see if a castle move is legal and move the rook
@@ -721,106 +743,106 @@ static CBOOL cmakemove(move_bytes m)
 	if (m.bits & 2) {
 		int from, to;
 
-		if (in_check(side))
+		if (cin_check(game->side))
 			return FALSE;
 		switch (m.to) {
 			case 62:
-				if (color[F1] != EMPTY || color[G1] != EMPTY ||
-						attack(F1, xside) || attack(G1, xside))
+				if (game->color[CF1] != EMPTY || game->color[CG1] != EMPTY ||
+						attack(CF1, game->xside) || attack(CG1, game->xside))
 					return FALSE;
-				from = H1;
-				to = F1;
+				from = CH1;
+				to = CF1;
 				break;
 			case 58:
-				if (color[B1] != EMPTY || color[C1] != EMPTY || color[D1] != EMPTY ||
-						attack(C1, xside) || attack(D1, xside))
+				if (game->color[CB1] != EMPTY || game->color[CC1] != EMPTY || game->color[CD1] != EMPTY ||
+						attack(CC1, game->xside) || attack(CD1, game->xside))
 					return FALSE;
-				from = A1;
-				to = D1;
+				from = CA1;
+				to = CD1;
 				break;
 			case 6:
-				if (color[F8] != EMPTY || color[G8] != EMPTY ||
-						attack(F8, xside) || attack(G8, xside))
+				if (game->color[CF8] != EMPTY || game->color[CG8] != EMPTY ||
+						attack(CF8, game->xside) || attack(CG8, game->xside))
 					return FALSE;
-				from = H8;
-				to = F8;
+				from = CH8;
+				to = CF8;
 				break;
 			case 2:
-				if (color[B8] != EMPTY || color[C8] != EMPTY || color[D8] != EMPTY ||
-						attack(C8, xside) || attack(D8, xside))
+				if (game->color[CB8] != EMPTY || game->color[CC8] != EMPTY || game->color[CD8] != EMPTY ||
+						attack(CC8, game->xside) || attack(CD8, game->xside))
 					return FALSE;
-				from = A8;
-				to = D8;
+				from = CA8;
+				to = CD8;
 				break;
 			default:  /* shouldn't get here */
 				from = -1;
 				to = -1;
 				break;
 		}
-		color[to] = color[from];
-		piece[to] = piece[from];
-		color[from] = EMPTY;
-		piece[from] = EMPTY;
+		game->color[to] = game->color[from];
+		game->piece[to] = game->piece[from];
+		game->color[from] = CEMPTY;
+		game->piece[from] = CEMPTY;
 	}
 
 	/* back up information so we can take the move back later. */
-	hist_dat[hply].m.b = m;
-	hist_dat[hply].capture = piece[(int)m.to];
-	hist_dat[hply].castle = castle;
-	hist_dat[hply].ep = ep;
-	hist_dat[hply].fifty = fifty;
-	hist_dat[hply].hash = hash;
-	++ply;
-	++hply;
+	game->hist_dat[game->hply].m.b = m;
+	game->hist_dat[game->hply].capture = game->piece[(int)m.to];
+	game->hist_dat[game->hply].castle = game->castle;
+	game->hist_dat[game->hply].ep = game->ep;
+	game->hist_dat[game->hply].fifty = game->fifty;
+	game->hist_dat[game->hply].hash = game->hash;
+	++(game->ply);
+	++(game->hply);
 
 	/* update the castle, en passant, and
 	   fifty-move-draw variables */
-	castle &= castle_mask[(int)m.from] & castle_mask[(int)m.to];
+	game->castle &= CCASTLE_MASK[(int)m.from] & CCASTLE_MASK[(int)m.to];
 	if (m.bits & 8) {
-		if (side == LIGHT)
-			ep = m.to + 8;
+		if (game->side == CLIGHT)
+			game->ep = m.to + 8;
 		else
-			ep = m.to - 8;
+			game->ep = m.to - 8;
 	}
 	else
-		ep = -1;
+		game->ep = -1;
 	if (m.bits & 17)
-		fifty = 0;
+		game->fifty = 0;
 	else
-		++fifty;
+		++(game->fifty);
 
 	/* move the piece */
-	color[(int)m.to] = side;
+	game->color[(int)m.to] = game->side;
 	if (m.bits & 32)
-		piece[(int)m.to] = m.promote;
+		game->piece[(int)m.to] = m.promote;
 	else
-		piece[(int)m.to] = piece[(int)m.from];
-	color[(int)m.from] = EMPTY;
-	piece[(int)m.from] = EMPTY;
+		game->piece[(int)m.to] = game->piece[(int)m.from];
+	game->color[(int)m.from] = CEMPTY;
+	game->piece[(int)m.from] = CEMPTY;
 
 	/* erase the pawn if this is an en passant move */
 	if (m.bits & 4) {
-		if (side == LIGHT) {
-			color[m.to + 8] = EMPTY;
-			piece[m.to + 8] = EMPTY;
+		if (game->side == CLIGHT) {
+			game->color[m.to + 8] = CEMPTY;
+			game->piece[m.to + 8] = CEMPTY;
 		}
 		else {
-			color[m.to - 8] = EMPTY;
-			piece[m.to - 8] = EMPTY;
+			game->color[m.to - 8] = CEMPTY;
+			game->piece[m.to - 8] = CEMPTY;
 		}
 	}
 
 	/* switch sides and test for legality (if we can capture
 	   the other guy's king, it's an illegal position and
 	   we need to take the move back) */
-	side ^= 1;
-	xside ^= 1;
-	if (in_check(xside)) {
+	game->side ^= 1;
+	game->xside ^= 1;
+	if (cin_check(game->xside)) {
 		takeback();
-		return FALSE;
+		return CFALSE;
 	}
-	set_hash();
-	return TRUE;
+	cset_hash();
+	return CTRUE;
 }
 
 
@@ -895,31 +917,31 @@ void takeback()
 }
 
 
-/* in_check() returns TRUE if side s is in check and FALSE
+/* cin_check() returns TRUE if side s is in check and FALSE
    otherwise. It just scans the board to find side s's king
    and calls attack() to see if it's being attacked. */
 
-BOOL in_check(int s)
+CBOOL cin_check(Chess *game, int s)
 {
 	int i;
 
 	for (i = 0; i < 64; ++i)
-		if (piece[i] == KING && color[i] == s)
-			return attack(i, s ^ 1);
-	return TRUE;  /* shouldn't get here */
+		if (game->piece[i] == CKING && game->color[i] == s)
+			return cattack(game, i, s ^ 1);
+	return CTRUE;  /* shouldn't get here */
 }
 
 
 /* attack() returns TRUE if square sq is being attacked by side
    s and FALSE otherwise. */
 
-BOOL attack(int sq, int s)
+CBOOL cattack(Chess *game, int sq, int s)
 {
 	int i, j, n;
 
 	for (i = 0; i < 64; ++i)
-		if (color[i] == s) {
-			if (piece[i] == PAWN) {
+		if (game->color[i] == s) {
+			if (game->piece[i] == PAWN) {
 				if (s == LIGHT) {
 					if (COL(i) != 0 && i - 9 == sq)
 						return TRUE;
